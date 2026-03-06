@@ -283,6 +283,7 @@ def measure_sse_get(
     cert: Optional[Tuple[str, str]] = None,
     timeout: float = 120.0,
     verbose: bool = False,
+    token_keys: Optional[List[str]] = None,
 ) -> StreamingMetrics:
     """
     Measure SSE streaming performance for a plain GET request.
@@ -290,9 +291,16 @@ def measure_sse_get(
     SSE-specific headers are added automatically and will not overwrite
     values already present in headers.
 
+    token_keys controls which JSON field names are probed for token text.
+    When None, the default probe list from rj_streaming_metrics is used.
+    Use verbose=True to print raw SSE lines and discover your server key.
+
     Returns a StreamingMetrics object. input_tokens is always 0 for GET
     requests since they carry no body.
     """
+    from rj_streaming_metrics import _DEFAULT_TOKEN_KEYS, _extract_token
+
+    effective_token_keys = token_keys if token_keys is not None else _DEFAULT_TOKEN_KEYS
     merged_headers = {**_SSE_DEFAULTS, **(headers or {})}
 
     metrics = StreamingMetrics(
@@ -306,6 +314,7 @@ def measure_sse_get(
 
     start_time = time.perf_counter()
     first_token_received = False
+    discovered_key: Optional[str] = None
     done_sentinels = {"[done]", "done"}
 
     try:
@@ -324,6 +333,10 @@ def measure_sse_get(
                 if not raw_line:
                     continue
                 elapsed_ms = (time.perf_counter() - start_time) * 1000
+
+                if verbose:
+                    print("[SSE RAW] %s" % raw_line)
+
                 line = raw_line.strip()
                 if not line.startswith("data:"):
                     continue
@@ -334,8 +347,16 @@ def measure_sse_get(
                     data = json.loads(data_str)
                 except json.JSONDecodeError:
                     continue
-                token = data.get("data", "")
-                if token and not token.isspace():
+
+                if not isinstance(data, dict):
+                    continue
+
+                token, used_key = _extract_token(data, effective_token_keys, discovered_key)
+                if token:
+                    if discovered_key is None:
+                        discovered_key = used_key
+                        metrics.token_key = used_key
+                        print("[SSE] Token key detected: '%s'" % used_key)
                     metrics.output_tokens += 1
                     metrics.time_to_last_token_ms = elapsed_ms
                     if not first_token_received:
@@ -695,6 +716,7 @@ _COLUMN_ORDER = [
     "Total Response Time (ms)",
     "Input Tokens",
     "Output Tokens",
+    "Token Key",
     "Error",
 ]
 
@@ -728,12 +750,14 @@ def _build_result(
             "Time to First Token (ms)": "-",
             "Time to Last Token (ms)": "-",
             "Output Tokens": "-",
+            "Token Key": "-",
         })
     else:
         base.update({
             "Time to First Token (ms)": _ms(metrics.time_to_first_token_ms),
             "Time to Last Token (ms)": _ms(metrics.time_to_last_token_ms),
             "Output Tokens": metrics.output_tokens,
+            "Token Key": getattr(metrics, "token_key", None) or "",
         })
 
     return base
@@ -760,6 +784,7 @@ def _error_result(
         "Total Response Time (ms)": None,
         "Input Tokens": 0,
         "Output Tokens": sentinel,
+        "Token Key": sentinel,
         "Error": error,
     }
 
@@ -807,6 +832,9 @@ def run_performance_tests(
         cert_cfg = endpoint.get("cert")
         timeout = float(endpoint.get("timeout", 120.0))
         extract_map = endpoint.get("extract", {})
+        # Optional: override token key probe list for this endpoint.
+        # e.g. "token_keys": ["token"] once you know your server's key.
+        token_keys_cfg = endpoint.get("token_keys", None)
 
         if not url:
             print("Warning: Endpoint %d missing 'url', skipping..." % idx)
@@ -880,13 +908,15 @@ def run_performance_tests(
 
             elif method == "GET":
                 metrics = measure_sse_get(
-                    url=url, headers=headers, cert=cert, timeout=timeout, verbose=verbose
+                    url=url, headers=headers, cert=cert, timeout=timeout,
+                    verbose=verbose, token_keys=token_keys_cfg,
                 )
 
             elif method == "POST":
                 metrics = measure_sse_stream(
                     url=url, payload=payload, headers=headers,
                     cert=cert, timeout=timeout, verbose=verbose,
+                    token_keys=token_keys_cfg,
                 )
 
             else:
