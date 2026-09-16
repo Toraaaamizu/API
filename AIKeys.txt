@@ -21,6 +21,8 @@ import com.kms.katalon.core.webui.driver.DriverFactory
 import org.openqa.selenium.devtools.DevTools
 import org.openqa.selenium.devtools.HasDevTools
 import java.util.Optional
+import org.openqa.selenium.Dimension
+import org.openqa.selenium.StaleElementReferenceException
 
 
 public class Performance_AiAssist_Keywords {
@@ -33,6 +35,51 @@ public class Performance_AiAssist_Keywords {
 		if (!perfEnabled) return
 		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
 	}
+
+	/*
+	 * ==============================================================
+	 * Headless-stability helpers
+	 * ==============================================================
+	 * Headless Chrome/Firefox launch with a small default viewport
+	 * (commonly 800x600 or 1024x768 depending on the driver), unlike
+	 * a headed session which is normally maximized. Elements that are
+	 * technically "present" but outside that small viewport can fail
+	 * WebUI.click()/mouseOver() with ElementClickInterceptedException
+	 * or simply be skipped over. We force a realistic viewport once
+	 * per session before any AI Assist interaction.
+	 */
+	private void ensureViewportSize() {
+		try {
+			DriverFactory.getWebDriver().manage().window().setSize(new Dimension(1920, 1080))
+		} catch (Exception e) {
+			KeywordUtil.logInfo("Unable to resize browser window (safe to ignore on some grids): ${e.message}")
+		}
+	}
+
+	/*
+	 * Race-safe replacement for the common
+	 *     WebUI.click(btnSend)
+	 *     WebUI.waitForElementNotPresent(busy, 300)
+	 * pattern used throughout this file.
+	 *
+	 * In headless mode, the busy/spinner element can appear and be
+	 * removed from the DOM faster (or slower) than in a headed
+	 * browser. Calling waitForElementNotPresent() immediately after a
+	 * click can return true simply because the spinner hasn't been
+	 * added to the DOM YET, not because the AI has actually finished
+	 * responding - this is the single biggest source of intermittent
+	 * headless-only failures in this suite (the code then reads the
+	 * response text before it is ready).
+	 *
+	 * This helper first gives the spinner a short, optional window to
+	 * appear, then waits (with normal STOP_ON_FAILURE handling) for it
+	 * to disappear.
+	 */
+	private void waitForBusyCycle(TestObject busy, long longTimeoutSeconds) {
+		WebUI.waitForElementPresent(busy, 5, FailureHandling.OPTIONAL)
+		WebUI.waitForElementNotPresent(busy, longTimeoutSeconds, FailureHandling.STOP_ON_FAILURE)
+	}
+
 final class AiAssistConstants {
 	static final String FILE_NAME = "ACSCISM.txt"
 	static final String FILE_PROMPT = "Explain the uploaded file, generate a clear and concise summary."
@@ -45,6 +92,8 @@ final class AiAssistConstants {
 	
 @Keyword
 def openAiAssist(boolean perfEnabled) {
+
+    ensureViewportSize()
 
     def busy = findTestObject(
         'Object Repository/X360/XAI/Performance/AiAssist/03_General/div_topSectionWithChatBusy'
@@ -127,6 +176,7 @@ def openAiAssist(boolean perfEnabled) {
 				
 				if (apiTs instanceof Number) {
 				    duration = apiTs.longValue() - clickTime
+				    break
 				}
 
 
@@ -214,7 +264,12 @@ def verifyAIResponse(TestObject errorResponse, TestObject aiResponse) {
     if (!responses.isEmpty()) {
 
         String responseText = responses.collect {
-            it.getAttribute("innerText")?.trim() ?: ""
+            try {
+                it.getAttribute("innerText")?.trim() ?: ""
+            } catch (StaleElementReferenceException ignored) {
+                // Element was replaced by the streaming response; skip it
+                ""
+            }
         }.findAll {
             it
         }.join("\n")
@@ -586,14 +641,16 @@ def handleArtifactFlow(String artifactName) {
 		WebUI.waitForElementPresent(useThisResponse, GlobalVariable.iLoad)
 		WebUI.waitForElementPresent(inputBox, GlobalVariable.iLoad)
 	
+		WebUI.scrollToElement(inputBox, 5)
+		WebUI.click(inputBox)
 		WebUI.setText(inputBox, prompt)
-		WebUI.waitForElementNotPresent(busy, 300)
+		waitForBusyCycle(busy, 300)
 		WebUI.waitForElementClickable(btnSend, GlobalVariable.iLoad)
 		WebUI.click(btnSend)
 		WebUI.waitForPageLoad(GlobalVariable.iLoad)
 	
 		verifyAIResponse(errorResponse, aiResponse)
-		WebUI.waitForElementNotPresent(busy, 300)
+		waitForBusyCycle(busy, 300)
 		// Append AI response to CellValue
 		WebUI.waitForElementVisible(aiResponse, GlobalVariable.iLoad)
 		String responseText = WebUI.getText(aiResponse).trim()
@@ -677,11 +734,13 @@ def handleArtifactFlow(String artifactName) {
 		
 				/* Switch to AI frame and wait until ready */
 				WebUI.switchToFrame(ui.iframe, timeout)
-				WebUI.waitForElementNotPresent(ui.busy, 300)
+				waitForBusyCycle(ui.busy, 300)
 				WebUI.waitForElementPresent(ui.inputBox, timeout)
 		
 		
 				/* Send AI prompt */
+				WebUI.scrollToElement(ui.inputBox, 5)
+				WebUI.click(ui.inputBox)
 				WebUI.setText(ui.inputBox, aiPrompt1.getPromptDetails())
 				WebUI.waitForElementClickable(ui.btnSend, timeout)
 		
@@ -689,20 +748,22 @@ def handleArtifactFlow(String artifactName) {
 				GlobalVariable.CellValue = "Ask a Question - ${aiPrompt1.getPromptDetails()}  Response Received: " + WebUI.getText(ui.response)
 				CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
 				WebUI.click(ui.btnSend)
-				WebUI.waitForElementNotPresent(ui.busy, 300)
+				waitForBusyCycle(ui.busy, 300)
 				CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
 		
 				/* Validate AI response */
 				verifyAIResponse(ui.errorResponse, ui.aiResponse)
 		
 				/* Send AI prompt */
+				WebUI.scrollToElement(ui.inputBox, 5)
+				WebUI.click(ui.inputBox)
 				WebUI.setText(ui.inputBox, aiPrompt2.getPromptDetails())
 				WebUI.waitForElementClickable(ui.btnSend, timeout)
 		
 				GlobalVariable.CellValue = "Ask a Question - ${aiPrompt2.getPromptDetails()}  Response Received: " + WebUI.getText(ui.aiResponse)
 				CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
 				WebUI.click(ui.btnSend)
-				WebUI.waitForElementNotPresent(ui.busy, 300)
+				waitForBusyCycle(ui.busy, 300)
 				CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
 		
 				/* Validate AI response */
@@ -777,7 +838,7 @@ def handleArtifactFlow(String artifactName) {
 		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
 		WebUI.click(startOverButton)
 		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
-		WebUI.waitForElementNotPresent(busy, GlobalVariable.sTimeToWait)
+		waitForBusyCycle(busy, GlobalVariable.sTimeToWait)
 	
 	}
 	
@@ -796,6 +857,7 @@ def handleArtifactFlow(String artifactName) {
 	
 	@Keyword
 	def xactaAIMenuSiteLevel() {
+		ensureViewportSize()
 		def menu = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'menu xactaAIMenu'])
 		def aiAssistant = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'dropdown-item aiAssistant'])
 		WebUI.waitForElementClickable(menu, GlobalVariable.iLoad)
@@ -806,6 +868,7 @@ def handleArtifactFlow(String artifactName) {
 	
 	@Keyword
 	def xactaAIMenuControlsAccuracy() {
+		ensureViewportSize()
 		def menu = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'menu xactaAIMenu'])
 		def aiAssistant = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'dropdown-item navControlConfidence'])
 		GlobalVariable.CellValue = ' Navigate to Controls Accuracy'
@@ -824,10 +887,12 @@ def handleArtifactFlow(String artifactName) {
 		def publishingAndJobs = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'submenu pubJobsSubmenu'])
 		def jobSchedule = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'dropdown-item jobSchedLink'])
 		GlobalVariable.CellValue = ' Navvigate to Job Schedule Queue '
+		ensureViewportSize()
 		WebUI.waitForElementClickable(menu, GlobalVariable.iLoad)
 		WebUI.click(menu)
 		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
 		WebUI.waitForElementClickable(publishingAndJobs, GlobalVariable.iLoad)
+		WebUI.scrollToElement(publishingAndJobs, 5)
 		WebUI.mouseOver(publishingAndJobs)
 		WebUI.waitForElementClickable(jobSchedule, GlobalVariable.iLoad)
 		WebUI.click(jobSchedule)
@@ -840,12 +905,14 @@ def handleArtifactFlow(String artifactName) {
 	@Keyword
 	def aiAssistSiteLevelOption(String choice) {
 		GlobalVariable.CellValue = ' AI Prompt Panel Open: ' + choice
+		ensureViewportSize()
 		def aiAssistSelectionBtn = findTestObject("Object Repository/X360/XAI/Performance/AiSiteLevel/button_AiSiteLevelDropdown")
 		def selectedChoice = findTestObject("Object Repository/X360/XAI/Performance/AiSiteLevel/li_selectedChoice", [('sValue') : choice])
 		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
 		WebUI.waitForElementClickable(aiAssistSelectionBtn, GlobalVariable.iLoad)
 		WebUI.click(aiAssistSelectionBtn)
 		WebUI.waitForElementClickable(selectedChoice, GlobalVariable.iLoad)
+		WebUI.scrollToElement(selectedChoice, 5)
 		WebUI.delay(3)
 		WebUI.click(selectedChoice)
 		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
@@ -881,30 +948,34 @@ def handleArtifactFlow(String artifactName) {
 				/* Switch to AI frame and wait until ready */
 				WebUI.switchToFrame(ui.iframe, timeout)
 				CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 2, GlobalVariable.withServerLoad)
-				WebUI.waitForElementNotPresent(ui.busy, 300)
+				waitForBusyCycle(ui.busy, 300)
 				WebUI.waitForElementPresent(ui.inputBox, timeout)
 		
 		
 				/* Send AI prompt */
+				WebUI.scrollToElement(ui.inputBox, 5)
+				WebUI.click(ui.inputBox)
 				WebUI.setText(ui.inputBox, aiPrompt1.getPromptDetails())
 				WebUI.waitForElementClickable(ui.btnSend, timeout)
 				GlobalVariable.CellValue = "Ask a Question - ${aiPrompt1.getPromptDetails()} Response Received: " + WebUI.getText(ui.response)
 				CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
 				WebUI.click(ui.btnSend)
-				WebUI.waitForElementNotPresent(ui.busy, 300)
+				waitForBusyCycle(ui.busy, 300)
 				CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
 		
 				/* Validate AI response */
 				verifyAIResponse(ui.errorResponse, ui.aiResponse)
 		
 				/* Send AI prompt */
+				WebUI.scrollToElement(ui.inputBox, 5)
+				WebUI.click(ui.inputBox)
 				WebUI.setText(ui.inputBox, aiPrompt2.getPromptDetails())
 				WebUI.waitForElementClickable(ui.btnSend, timeout)
 		
 				GlobalVariable.CellValue = "Ask a Question - ${aiPrompt2.getPromptDetails()} Response Received: " + WebUI.getText(ui.aiResponse)
 				CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
 				WebUI.click(ui.btnSend)
-				WebUI.waitForElementNotPresent(ui.busy, 300)
+				waitForBusyCycle(ui.busy, 300)
 				CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
 		
 				/* Validate AI response */
@@ -951,12 +1022,14 @@ def handleArtifactFlow(String artifactName) {
 			feedbackOK: findTestObject('Object Repository/X360/XAI/Performance/AiAssist/03_General/btn_feedbackOkay')
 		]
 		try {
+		WebUI.scrollToElement(ui.inputBox, 5)
+		WebUI.click(ui.inputBox)
 		WebUI.setText(ui.inputBox, followupQuestion.getPromptDetails())
 		WebUI.waitForElementClickable(ui.btnSend, GlobalVariable.iLoad)
 		GlobalVariable.CellValue = "Ask Follow Up Question - ${followupQuestion.name()} Response Received: " + WebUI.getText(ui.aiResponse)
 		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
 		WebUI.click(ui.btnSend)
-		WebUI.waitForElementNotPresent(ui.busy, 300)
+		waitForBusyCycle(ui.busy, 300)
 		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
 		/* Validate AI response */
 		verifyAIResponse(ui.errorResponse, ui.aiResponse)
@@ -985,6 +1058,7 @@ def handleArtifactFlow(String artifactName) {
 		def projectAssistant = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'dropdown-item navProjAIAssistantWhite'])
 		def iframe = findTestObject('X360/XAI/Performance/AiAssist/03_General/iframe_Xai')
 		GlobalVariable.CellValue = ' Click and Open Project Assistant: ' + choice
+		ensureViewportSize()
 		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
 		WebUI.waitForElementClickable(projectAssistant, GlobalVariable.iLoad)
 		WebUI.click(projectAssistant)
