@@ -1,0 +1,517 @@
+package x360
+import static com.kms.katalon.core.checkpoint.CheckpointFactory.findCheckpoint
+import static com.kms.katalon.core.testcase.TestCaseFactory.findTestCase
+import static com.kms.katalon.core.testdata.TestDataFactory.findTestData
+import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+
+import com.kms.katalon.core.annotation.Keyword
+import com.kms.katalon.core.checkpoint.Checkpoint
+import com.kms.katalon.core.checkpoint.CheckpointFactory
+import com.kms.katalon.core.mobile.keyword.MobileBuiltInKeywords
+import com.kms.katalon.core.model.FailureHandling
+import com.kms.katalon.core.testcase.TestCase
+import com.kms.katalon.core.testcase.TestCaseFactory
+import com.kms.katalon.core.testdata.TestData
+import com.kms.katalon.core.testdata.TestDataFactory
+import com.kms.katalon.core.testobject.ObjectRepository
+import com.kms.katalon.core.testobject.TestObject
+import com.kms.katalon.core.webservice.keyword.WSBuiltInKeywords
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords
+import CustomKeywords
+import internal.GlobalVariable
+
+import org.openqa.selenium.WebElement
+import org.openqa.selenium.WebDriver
+import org.openqa.selenium.By
+
+import com.kms.katalon.core.mobile.keyword.internal.MobileDriverFactory
+import com.kms.katalon.core.webui.driver.DriverFactory
+
+import com.kms.katalon.core.testobject.RequestObject
+import com.kms.katalon.core.testobject.ResponseObject
+import com.kms.katalon.core.testobject.ConditionType
+import com.kms.katalon.core.testobject.TestObjectProperty
+
+import com.kms.katalon.core.mobile.helper.MobileElementCommonHelper
+import com.kms.katalon.core.util.KeywordUtil
+
+import com.kms.katalon.core.webui.exception.WebElementNotFoundException
+
+//import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import org.openqa.selenium.Keys as Keys
+
+
+class Performance_Functional_Keywords {
+	
+	private void perfStart(String label, boolean perfEnabled) {
+		if (!perfEnabled) return
+		GlobalVariable.CellValue = label
+		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+	}
+	private void perfEnd(boolean perfEnabled) {
+		if (!perfEnabled) return
+		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+	}
+	
+	@Keyword
+	def clearFilter() {
+		TestObject clearFilterButton = findTestObject('Object Repository/X360/Misc/Performance/Generic/button_generic', [('sValue') : 'button clearSideFilter'])
+		if (WebUI.waitForElementClickable(clearFilterButton, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+			WebUI.click(clearFilterButton)
+			WebUI.comment("Clear filter button clicked.")
+		} else {
+			WebUI.comment("Clear filter button not clickable.")
+		}
+	}
+	
+@Keyword
+def GotoOraProjAllTasks(boolean isMadmin = true) {
+	boolean perfEnabled = true
+    TestObject folder       = findTestObject('Object Repository/X360/Misc/Performance/Generic/link_generic', [('sValue') : 'folderName', ('sTextValue') : '0A A QRA Latest RJ'])
+
+    TestObject project      = findTestObject('Object Repository/X360/Misc/Performance/Generic/link_generic', [('sValue') : 'projectName', ('sTextValue') : 'Cyber Risk Management Workflow (QRA) Performance'])
+
+    TestObject dropdown     = findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aTasksDropDown')
+    TestObject dropdownItem = findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aTasksDropDownItem')
+	WebUI.waitForPageLoad(GlobalVariable.iLoad)
+    // Create instance of ExcelFunctions (Option 2)
+    // Helper closure for benchmarked clicks
+    def benchmarkClick = { TestObject obj, String label ->
+        if (WebUI.waitForElementClickable(obj, 5, FailureHandling.OPTIONAL)) {
+            perfStart(label,  perfEnabled)
+			WebUI.waitForElementClickable(obj, GlobalVariable.iLoad)
+            WebUI.click(obj)
+			perfEnd(perfEnabled)
+        }
+    }
+
+    // Click folder only for Madmin
+    if (isMadmin) {
+        benchmarkClick(folder, 'Click Folder')
+    }
+
+    // Click project, dropdown, dropdown item
+	spinnerWaitToDisappear(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+    benchmarkClick(project, 'Click Project')
+	spinnerWaitToDisappear(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+    benchmarkClick(dropdown, 'Open Tasks Dropdown')
+    benchmarkClick(dropdownItem, 'Select Tasks Dropdown Item')
+
+    WebUI.waitForPageLoad(GlobalVariable.iLoad)
+	spinnerWaitToDisappear(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+}
+
+@Keyword
+def GotoInheritanceProjectsTasks(boolean isMadmin = true, String projectTarget) {
+	boolean perfEnabled = true
+	TestObject folder       = findTestObject('Object Repository/X360/Misc/Performance/Generic/link_generic', [('sValue') : 'folderName', ('sTextValue') : '0A A QRA Latest Inheritance'])
+
+	TestObject project      = findTestObject('Object Repository/X360/Misc/Performance/Generic/link_generic', [('sValue') : 'projectName', ('sTextValue') : projectTarget])
+
+	TestObject dropdown     = findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aTasksDropDown')
+	TestObject dropdownItem = findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aTasksDropDownItem')
+	WebUI.waitForPageLoad(GlobalVariable.iLoad)
+	// Create instance of ExcelFunctions (Option 2)
+	// Helper closure for benchmarked clicks
+	def benchmarkClick = { TestObject obj, String label ->
+		if (WebUI.waitForElementClickable(obj, 5, FailureHandling.OPTIONAL)) {
+			perfStart(label,  perfEnabled)
+			WebUI.waitForElementClickable(obj, GlobalVariable.iLoad)
+			WebUI.click(obj)
+			perfEnd(perfEnabled)
+		}
+	}
+
+	// Click folder only for Madmin
+	if (isMadmin) {
+		benchmarkClick(folder, 'Click Folder')
+	}
+
+	// Click project, dropdown, dropdown item
+	benchmarkClick(project, 'Click Project')
+	benchmarkClick(dropdown, 'Open Tasks Dropdown')
+	benchmarkClick(dropdownItem, 'Click Task')
+
+	WebUI.waitForPageLoad(GlobalVariable.iLoad)
+	spinnerWaitToDisappear(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+}
+
+@Keyword
+def goToControlInheritanceRequest() {
+	def projectNavLink = findTestObject("Object Repository/X360/Misc/Performance/Generic/link_generic", [('sValue'): 'menu projectsMenu', ('sTextValue'): 'Projects'])
+	def controlInheritanceRequest = findTestObject("Object Repository/X360/Misc/Performance/Generic/link_generic", [('sValue'): 'dropdown-item controlsInheritanceRequestsNavLink', ('sTextValue'): 'Control Inheritance Requests'])
+	WebUI.waitForElementPresent(projectNavLink, GlobalVariable.iLoad)
+	WebUI.click(projectNavLink)
+	WebUI.waitForElementClickable(controlInheritanceRequest, GlobalVariable.iLoad)
+	WebUI.click(controlInheritanceRequest)
+	spinnerWaitToDisappear(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+}
+
+@Keyword
+def goToHome() {
+	def projectNavLink = findTestObject("Object Repository/X360/Misc/Performance/Generic/link_generic", [('sValue'): 'menu projectsMenu', ('sTextValue'): 'Projects'])
+	def foldersAndProjects = findTestObject("Object Repository/X360/Misc/Performance/Generic/link_generic", [('sValue'): 'dropdown-item foldersMenuLink', ('sTextValue'): 'Folders & Projects'])
+	WebUI.waitForElementPresent(projectNavLink, GlobalVariable.iLoad)
+	WebUI.click(projectNavLink)
+	WebUI.waitForElementClickable(foldersAndProjects, GlobalVariable.iLoad)
+	WebUI.click(foldersAndProjects)
+	spinnerWaitToDisappear(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+}
+
+
+@Keyword
+def spinnerWaitToDisappear(
+        int timeToWait = 30,
+        int noLoadWait = 3,
+        boolean withServerLoad = true,
+        int retryCount = 2
+) {
+
+    TestObject spinner = findTestObject('Object Repository/X360/Misc/Performance/Generic/spinner_generic')
+    int maxWait = withServerLoad ? timeToWait : noLoadWait
+    int attempt = 0
+
+    while (attempt <= retryCount) {
+
+        WebUI.comment("Spinner wait attempt ${attempt + 1} of ${retryCount + 1}")
+
+        // If spinner not present → proceed immediately
+        if (!WebUI.verifyElementPresent(spinner, 1, FailureHandling.OPTIONAL)) {
+            WebUI.comment("Spinner not found in DOM. Proceeding immediately.")
+            return true
+        }
+
+        WebUI.comment("Spinner detected. Polling for disappearance (max ${maxWait}s)...")
+
+        long start = System.currentTimeMillis()
+
+        while ((System.currentTimeMillis() - start) / 1000 < maxWait) {
+
+            boolean present = WebUI.verifyElementPresent(spinner, 0, FailureHandling.OPTIONAL)
+            boolean visible = WebUI.verifyElementVisible(spinner, FailureHandling.OPTIONAL)
+
+            if (!present || !visible) {
+                long elapsed = (System.currentTimeMillis() - start) / 1000
+                WebUI.comment("Spinner disappeared after ~${elapsed}s.")
+                return true
+            }
+
+            // Small polling interval (fast response, low CPU)
+            WebUI.delay(0.2)
+        }
+
+        WebUI.comment("Spinner did NOT disappear within ${maxWait}s. Retrying...")
+        attempt++
+        WebUI.delay(1)
+    }
+
+    WebUI.comment("Spinner did NOT disappear after all ${retryCount + 1} attempts.")
+    return false
+}
+
+	@Keyword
+	def waitForToasterAppearAndDisappear(int timeout, FailureHandling failureHandling = FailureHandling.OPTIONAL) {
+		TestObject toaster = findTestObject('X360/Process_Steps/Performance/Risk_Registry/ICRisk/divToasterAny')
+		TestObject closeBtn = findTestObject('X360/Misc/Performance/Common/06_toaster/btn_toasterClose')
+
+		if (!WebUI.waitForElementPresent(toaster, timeout, failureHandling)) {
+			KeywordUtil.logInfo("Toaster did not appear within ${timeout} seconds.")
+			return false
+		}
+
+		if (!WebUI.waitForElementNotPresent(toaster, timeout, failureHandling)) {
+			KeywordUtil.logInfo("Toaster did not disappear within ${timeout} seconds.")
+			WebUI.click(closeBtn, FailureHandling.OPTIONAL)
+			return false
+		}
+
+		KeywordUtil.logInfo("Toaster appeared and disappeared successfully.")
+		return true
+	}
+
+@Keyword
+def pinCollapsiblePanel() {
+
+    spinnerWaitToDisappear(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+    WebUI.waitForPageLoad(GlobalVariable.iLoad)
+
+    def panelParams = [
+        'sClass1': 'side-filter main-side-filter',
+        'sClass2': 'collapsible-side-panel'
+    ]
+
+    def pinParams = [
+        'sValue1': 'side-filter main-side-filter',
+        'sID'    : 'sideFilterPin'
+    ]
+
+    TestObject panel = findTestObject('X360/Misc/Performance/Generic/pin_generic', panelParams)
+    TestObject pin   = findTestObject('X360/Misc/Performance/Generic/pinParam_generic', pinParams)
+
+    // Check if pin is already visible BEFORE doing anything else
+    boolean pinInitiallyVisible = WebUI.verifyElementVisible(pin, FailureHandling.OPTIONAL)
+
+    if (pinInitiallyVisible) {
+        WebUI.comment("Pin already visible — skipping panel expansion and retry logic.")
+
+        if (WebUI.verifyElementClickable(pin, FailureHandling.OPTIONAL)) {
+            WebUI.comment("Pinned the collapsible panel.")
+            return true
+        } else {
+            KeywordUtil.markFailed("Pin is visible but not clickable.")
+            return false
+        }
+    }
+
+    // STEP 1 — Expand panel (only if pin was not visible)
+    if (WebUI.verifyElementClickable(panel, FailureHandling.OPTIONAL)) {
+        WebUI.click(panel)
+        WebUI.comment("Expanded collapsible panel.")
+    } else {
+        WebUI.comment("Panel is not clickable.")
+        KeywordUtil.markFailed("Panel could not be expanded.")
+    }
+
+    // STEP 2 — Retry logic (only reached if pin was NOT initially visible)
+    int retries = 5
+    boolean clicked = false
+
+    for (int i = 0; i < retries; i++) {
+
+        boolean pinVisible   = WebUI.waitForElementVisible(pin, 2, FailureHandling.OPTIONAL)
+        boolean pinClickable = WebUI.waitForElementClickable(pin, 2, FailureHandling.OPTIONAL)
+
+        if (pinVisible && pinClickable) {
+            WebUI.click(pin)
+            WebUI.comment("Pinned the collapsible panel.")
+            clicked = true
+            break
+        }
+
+        spinnerWaitToDisappear(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+    }
+
+    if (!clicked) {
+        KeywordUtil.markFailed("Pin icon never became clickable.")
+    }
+
+    return clicked
+}
+
+@Keyword
+def pinNestedCollapsiblePanel() {
+	WebUI.waitForPageLoad(GlobalVariable.iLoad)
+
+	def panelParams = ['sID1': 'sectionTestSubjectsResults', 'sValue1': 'nested-table-w-side-filter', 'sClass1' : 'collapsible-side-panel']
+	def pinParams   = ['sID1': 'sectionTestSubjectsResults', 'sValue1': 'nested-table-w-side-filter', 'sID2': 'sideFilterPin']
+	TestObject panel = findTestObject('Object Repository/X360/Misc/Performance/Generic/nestedPinParam_generic', panelParams)
+	TestObject pin   = findTestObject('Object Repository/X360/Misc/Performance/Generic/nestedPin_generic', pinParams)
+
+	// Expand panel only if pin not visible
+	if (!WebUI.verifyElementVisible(pin, FailureHandling.OPTIONAL)) {
+		WebUI.click(panel)
+		WebUI.mouseOver(panel)
+		WebUI.comment("Expanded collapsible panel.")
+	}
+
+	// Wait until pin is visible and clickable
+	if (WebUI.waitForElementVisible(pin, GlobalVariable.iLoad, FailureHandling.OPTIONAL) &&
+		WebUI.waitForElementClickable(pin, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+		WebUI.click(pin)
+		WebUI.comment("Pinned the collapsible panel.")
+		return true
+	} else {
+		WebUI.comment("Pin icon not available or not clickable.")
+		return false
+	}
+}
+
+
+	@Keyword
+	def switchToView(String viewButtonValue) {
+		WebUI.waitForPageLoad(GlobalVariable.iLoad)
+		def viewBtn = findTestObject("Object Repository/X360/Misc/Performance/Generic/button_generic", [('sValue') : viewButtonValue])
+		WebUI.waitForElementClickable(viewBtn, GlobalVariable.iLoad)
+		WebUI.click(viewBtn)
+	}
+
+	@Keyword
+	def switchToCardDetailView() {
+		switchToView('button cardViewCardDetail')
+	}
+
+	@Keyword
+	def switchToListDetailView() {
+		switchToView('button cardViewListDetail')
+	}
+
+	@Keyword
+	def switchToListView() {
+		switchToView('button cardViewList')
+	}
+
+	@Keyword
+	def setTablePageLength(TestObject paginationInput, String pageLength, int waitTimeout = GlobalVariable.iLoad, int delay = 2) {
+		try {
+			int pageLengthValue = pageLength.toInteger()
+			if (pageLengthValue > 399) {
+				WebUI.comment("Input page length ${pageLengthValue} exceeds limit; capping at 399")
+				pageLength = '100'
+			}
+
+			WebUI.waitForPageLoad(5)
+			WebUI.switchToDefaultContent()
+			WebUI.waitForElementVisible(paginationInput, waitTimeout)
+			WebUI.click(paginationInput)
+			WebUI.sendKeys(paginationInput, Keys.chord(Keys.CONTROL, 'a', Keys.DELETE, pageLength, Keys.ENTER))
+			spinnerWaitToDisappear(waitTimeout, 1, GlobalVariable.withServerLoad)
+			WebUI.comment("Successfully set table page length to: ${pageLength}")
+		} catch (Exception e) {
+			WebUI.comment("Failed to set table page length: ${e.message}")
+			throw e
+		}
+	}
+
+	@Keyword
+	def waitForElementAttributeValue(TestObject to, String attribute, String expectedValue, int timeout = GlobalVariable.iLoad, boolean optional = true) {
+		def handling = optional ? FailureHandling.OPTIONAL : FailureHandling.STOP_ON_FAILURE
+		def matched = WebUI.waitForElementAttributeValue(to, attribute, expectedValue, timeout, handling)
+
+		if (!matched && !optional) {
+			KeywordUtil.markFailed("Attribute '${attribute}' did not match expected value '${expectedValue}' within ${timeout} seconds.")
+		}
+		return matched
+	}
+
+	@Keyword
+	def WaitForElementPresent(TestObject to, int timeout = GlobalVariable.iLoad, boolean optional = true) {
+		FailureHandling handling = optional ? FailureHandling.OPTIONAL : FailureHandling.STOP_ON_FAILURE
+		boolean isPresent = WebUI.waitForElementPresent(to, timeout, handling)
+
+		if (!isPresent && !optional) {
+			KeywordUtil.markFailed("Element not present: ${to.getObjectId()}")
+		}
+		return isPresent
+	}
+
+	@Keyword
+	def SetText(TestObject to, String text, boolean optional = true) {
+		FailureHandling handling = optional ? FailureHandling.OPTIONAL : FailureHandling.STOP_ON_FAILURE
+		if (WebUI.waitForElementVisible(to, GlobalVariable.iLoad, handling)) {
+			WebUI.setText(to, text)
+		} else if (!optional) {
+			KeywordUtil.markFailed("Element not visible for SetText: ${to.getObjectId()}")
+		}
+	}
+
+	@Keyword
+	def SendKeysEnter(TestObject to, boolean optional = true) {
+		FailureHandling handling = optional ? FailureHandling.OPTIONAL : FailureHandling.STOP_ON_FAILURE
+		if (WebUI.waitForElementClickable(to, GlobalVariable.iLoad, handling)) {
+			WebUI.sendKeys(to, Keys.chord(Keys.ENTER))
+		} else if (!optional) {
+			KeywordUtil.markFailed("Element not clickable for SendKeysEnter: ${to.getObjectId()}")
+		}
+	}
+
+	@Keyword
+	def generateRandomString(Map args = [:]) {
+		String alphanum_characters = args.get('alphanum_characters') ?: "AB1CDE2FGHIJ7KLMN3OPQR4STUV895WX60YZ"
+		int stringSize = args.get('stringSize') ?: 5
+		String prefix = args.get('prefix') ?: "auto_"
+
+		def randomString = (1..stringSize).collect {
+			def randomIndex = (int) (Math.random() * alphanum_characters.length())
+			alphanum_characters[randomIndex]
+		}.join()
+
+		return prefix + randomString
+	}
+
+	@Keyword
+def resetArtifactAndPstepStatus() {
+
+    try {
+
+        // STEP 1 — Wait for page load and click "View Artifact List"
+        WebUI.waitForPageLoad(GlobalVariable.iLoad)
+
+        TestObject btnViewArtifactList = findTestObject('Object Repository/X360/Process_Steps/End2End_Web/ProcessSteps/00_General/buttonViewArtifactList')
+        WebUI.waitForElementVisible(btnViewArtifactList, GlobalVariable.iLoad)
+
+        if (!WebUI.verifyElementClickable(btnViewArtifactList, FailureHandling.OPTIONAL)) {
+            WebUI.comment("❌ 'View Artifact List' button not clickable.")
+            return
+        }
+
+        WebUI.click(btnViewArtifactList)
+        WebUI.comment("✔ Clicked 'View Artifact List'.")
+
+        // STEP 2 — Wait for spinner/toaster
+        spinnerWaitToDisappear(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+        WebUI.comment("✔ Spinner/toaster cleared.")
+
+        // STEP 3 — Switch to artifact list iframe
+        TestObject iframeArtifactList = findTestObject('Object Repository/X360/Process_Steps/End2End_Web/ProcessSteps/00_General/ifrmArtifactList')
+
+        if (!WebUI.waitForElementVisible(iframeArtifactList, GlobalVariable.sTimeToWait)) {
+            WebUI.comment("❌ Artifact list iframe not found.")
+            return
+        }
+
+        WebUI.switchToFrame(iframeArtifactList, GlobalVariable.iLoad)
+        WebUI.comment("✔ Switched to artifact list iframe.")
+
+        // STEP 4 — Delete first artifact if present
+        TestObject deleteRecord = findTestObject('Object Repository/X360/Process_Steps/Performance/Remediaton_Plan/h4DeleteRecord')
+
+        if (!WebUI.waitForElementPresent(deleteRecord, 5)) {
+            WebUI.comment("ℹ No artifact record found to delete.")
+            return
+        }
+
+        if (!WebUI.verifyElementClickable(deleteRecord, FailureHandling.OPTIONAL)) {
+            WebUI.comment("❌ Delete record element not clickable.")
+            return
+        }
+
+        WebUI.click(deleteRecord)
+        WebUI.comment("✔ Clicked delete record.")
+
+        // Confirmation dialog
+        TestObject confirmAction = findTestObject('Object Repository/X360/Process_Steps/Performance/Remediaton_Plan/h4ConfirmAction')
+
+        if (!WebUI.waitForElementVisible(confirmAction, GlobalVariable.iLoad)) {
+            WebUI.comment("❌ Confirmation dialog not visible.")
+            return
+        }
+
+        TestObject btnOkay = findTestObject('Object Repository/X360/Misc/Performance/Generic/button_generic',
+                [('sValue') : 'button okay-button'])
+
+        if (!WebUI.verifyElementClickable(btnOkay, FailureHandling.OPTIONAL)) {
+            WebUI.comment("❌ OK button not clickable.")
+            return
+        }
+
+        WebUI.click(btnOkay)
+        WebUI.comment("✔ Confirmed deletion.")
+
+        // Close dialog
+        TestObject btnClose = findTestObject('X360/Process_Steps/Performance/Risk_Registry/ICRisk/btnClose')
+
+        if (WebUI.waitForElementClickable(btnClose, GlobalVariable.iLoad)) {
+            WebUI.click(btnClose)
+            WebUI.comment("✔ Closed dialog.")
+        }
+
+    } catch (Exception ex) {
+        WebUI.comment("❗ Exception occurred: ${ex.getMessage()}")
+
+    } finally {
+        WebUI.switchToDefaultContent()
+        WebUI.comment("↩ Returned to default content.")
+    }
+}
+}

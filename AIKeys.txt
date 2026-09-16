@@ -1,0 +1,994 @@
+package x360
+
+import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import com.kms.katalon.core.model.FailureHandling
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+
+import CustomKeywords
+
+import com.kms.katalon.core.webui.common.WebUiCommonHelper
+import com.kms.katalon.core.util.KeywordUtil
+import com.kms.katalon.core.testobject.TestObject
+import com.kms.katalon.core.configuration.RunConfiguration
+import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberKW
+
+import internal.GlobalVariable
+import org.openqa.selenium.WebElement
+import java.nio.file.Paths
+
+import com.kms.katalon.core.annotation.Keyword
+import com.kms.katalon.core.webui.driver.DriverFactory
+import org.openqa.selenium.devtools.DevTools
+import org.openqa.selenium.devtools.HasDevTools
+import java.util.Optional
+
+
+public class Performance_AiAssist_Keywords {
+	private void perfStart(String label, boolean perfEnabled) {
+		if (!perfEnabled) return
+		GlobalVariable.CellValue = label
+		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+	}
+	private void perfEnd(boolean perfEnabled) {
+		if (!perfEnabled) return
+		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+	}
+final class AiAssistConstants {
+	static final String FILE_NAME = "ACSCISM.txt"
+	static final String FILE_PROMPT = "Explain the uploaded file, generate a clear and concise summary."
+	static final String UPLOAD_FROM_COMPUTER = "Upload a file from your computer"
+	static final String USE_ATTACHED_ARTIFACT = "Use Artifact attached to this entry"
+	static final String SELECT_FROM_LIBRARY = "Select file from Artifact Library"
+	static final String ATTACHED_ARTIFACT_NAME = "ACSC-Cyber-Incident-Response-Plan-Template.docx"
+	static final String LIBRARY_ARTIFACT_NAME = "AFPC2Detail.png"
+}
+	
+@Keyword
+def openAiAssist(boolean perfEnabled) {
+
+    def busy = findTestObject(
+        'Object Repository/X360/XAI/Performance/AiAssist/03_General/div_topSectionWithChatBusy'
+    )
+
+    TestObject btnAi =
+        findTestObject('X360/XAI/Performance/AiAssist/03_General/btn_AiAssist')
+
+    WebUI.waitForElementClickable(btnAi, GlobalVariable.iLoad)
+
+    /* -------------------------------
+       Install JS network hook (once)
+       ------------------------------- */
+    if (perfEnabled) {
+		WebUI.executeJavaScript("""
+(function () {
+    if (window.__aiTimingInstalled) return;
+
+    window.__aiTimingInstalled = true;
+    window.__aiApiCallTime = null;
+
+    const originalFetch = window.fetch;
+    window.fetch = function () {
+        const url = arguments[0];
+        if (typeof url === 'string' &&
+            url.includes('/api-ui/ai/')) {
+            window.__aiApiCallTime ??= Date.now();
+        }
+        return originalFetch.apply(this, arguments);
+    };
+
+    const originalOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (method, url) {
+        if (typeof url === 'string' &&
+            url.includes('/api-ui/ai/')) {
+            window.__aiApiCallTime ??= Date.now();
+        }
+        return originalOpen.apply(this, arguments);
+    };
+})();
+""", null)
+    }
+
+    /* ✅ Reset timing BEFORE click */
+    if (perfEnabled) {
+        WebUI.executeJavaScript(
+            "window.__aiStreamPromptTime = null;", null
+        )
+    }
+
+    /* -------------------------------
+       Click AI Assist
+       ------------------------------- */
+    long clickTime = System.currentTimeMillis()
+    WebUI.click(btnAi)
+
+    /* -------------------------------
+       Measure click → AI API call
+       ------------------------------- */
+    if (perfEnabled) {
+
+        long duration = -1
+        long timeoutMs = GlobalVariable.iLoad * 1000
+        long waitStart = System.currentTimeMillis()
+
+        while (true) {
+
+            /* ✅ Hard timeout guard */
+            if ((System.currentTimeMillis() - waitStart) >= timeoutMs) {
+                KeywordUtil.logInfo(
+                    'AI streamPrompt not detected within timeout'
+                )
+                break
+            }
+
+
+				def apiTs = WebUI.executeJavaScript(
+				    "return window.__aiApiCallTime;", null
+				)
+				
+				if (apiTs instanceof Number) {
+				    duration = apiTs.longValue() - clickTime
+				}
+
+
+            /* ✅ Prevent log flooding / CPU spin */
+            Thread.sleep(200)
+        }
+
+        if (duration > 0) {
+
+            GlobalVariable.CellValue =
+                'AI Assist Startup Time'
+
+            def df = new java.text.SimpleDateFormat("HH:mm:ss.SSS")
+            GlobalVariable.startTime =
+                df.format(new Date(clickTime))
+            GlobalVariable.endTime =
+                df.format(new Date(clickTime + duration))
+
+		CustomKeywords.'x360.Performance_ExcelFunctions.writeToExcel'()
+			
+        } else {
+            KeywordUtil.logInfo(
+                'AI streamPrompt timing not captured'
+            )
+        }
+    }
+
+    /* -------------------------------
+       Continue existing AI logic
+       ------------------------------- */
+    WebUI.switchToDefaultContent()
+
+    WebUI.switchToFrame(
+        findTestObject('X360/XAI/Performance/AiAssist/03_General/iframe_Xai'),
+        GlobalVariable.iLoad
+    )
+
+    perfStart('Open AI - Initial Response Received', perfEnabled)
+    CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+
+    WebUI.waitForElementPresent(
+        findTestObject('X360/XAI/Performance/AiAssist/03_General/div_UseThisResponse'),
+        GlobalVariable.sTimeToWait
+    )
+
+    perfEnd(perfEnabled)
+
+    WebUI.waitForElementNotPresent(
+        busy,
+        GlobalVariable.sTimeToWait
+    )
+
+    verifyAIResponse(
+        findTestObject('X360/XAI/Performance/AiAssist/03_General/div_AiResponseError'),
+        findTestObject('X360/XAI/Performance/AiAssist/03_General/div_AiResponseText')
+    )
+}
+	
+def verifyAIResponse(TestObject errorResponse, TestObject aiResponse) {
+
+    // Known application/system error phrases only
+    List<String> knownErrors = [
+        "something went wrong",
+        "unexpected error",
+        "service unavailable",
+        "failed to generate",
+        "unable to generate",
+        "try again later",
+        "request failed",
+        "internal server error",
+        "timed out",
+        "network error"
+    ]
+
+    /* --------------------------------------------------
+     * First: Validate AI response exists
+     * -------------------------------------------------- */
+
+    List<WebElement> responses =
+            WebUiCommonHelper.findWebElements(
+                aiResponse,
+                GlobalVariable.iLoad
+            )
+
+    if (!responses.isEmpty()) {
+
+        String responseText = responses.collect {
+            it.getAttribute("innerText")?.trim() ?: ""
+        }.findAll {
+            it
+        }.join("\n")
+
+        if (responseText?.trim()) {
+
+            println "================ AI RESPONSE ================="
+            println responseText.take(1000)
+            println "=============================================="
+
+            WebUI.comment("AI response received:\n${responseText}")
+
+            // Valid response exists
+            // Do NOT fail simply because an error object exists somewhere
+            return
+        }
+    }
+
+    /* --------------------------------------------------
+     * Second: Check actual visible error messages
+     * -------------------------------------------------- */
+
+    List<WebElement> errors =
+            WebUiCommonHelper.findWebElements(
+                errorResponse,
+                FailureHandling.OPTIONAL
+            )
+
+    String actualError = null
+
+    for (WebElement err : errors) {
+
+        try {
+
+            if (!err.isDisplayed()) {
+                continue
+            }
+
+            String text = err.getText()?.trim()
+
+            if (!text) {
+                continue
+            }
+
+            println "Potential Error Text Found:"
+            println text
+
+            boolean isKnownError =
+                    knownErrors.any {
+                        text.toLowerCase().contains(it)
+                    }
+
+            if (isKnownError) {
+                actualError = text
+                break
+            }
+
+        } catch (Exception ignored) {
+            println "Skipping stale/invalid error element."
+        }
+    }
+
+    if (actualError) {
+
+        WebUI.switchToDefaultContent()
+
+        KeywordUtil.markFailedAndStop(
+            "AI application error detected:\n${actualError}"
+        )
+    }
+
+    /* --------------------------------------------------
+     * Third: Fallback condition
+     * -------------------------------------------------- */
+
+    WebUI.switchToDefaultContent()
+
+    KeywordUtil.markFailedAndStop(
+        "No AI response was returned and no known application error was detected."
+    )
+}
+		
+	@Keyword
+	def chatWithDocuments(String userSelection, boolean perfEnabled) {
+	
+		Map objects = defineUploadObjects()
+	
+		int TIMEOUT = 30
+		TestObject artifactButton =
+				findTestObject("Object Repository/X360/XAI/Performance/AiAssist/03_General/div_AttachArtifactIcon")
+		WebUI.waitForElementPresent(artifactButton, TIMEOUT)
+		WebUI.click(artifactButton)
+	
+	
+		switch (userSelection) {
+			case Performance_AiAssist_Keywords.AiAssistConstants.UPLOAD_FROM_COMPUTER:
+				handleUploadFromComputer()
+				downloadConversation()
+				break
+	
+	
+			case Performance_AiAssist_Keywords.AiAssistConstants.USE_ATTACHED_ARTIFACT:
+				WebUI.click(objects.useArtifact)
+				handleArtifactFlow(Performance_AiAssist_Keywords.AiAssistConstants.ATTACHED_ARTIFACT_NAME)
+				downloadConversation()
+				break
+	
+			case Performance_AiAssist_Keywords.AiAssistConstants.SELECT_FROM_LIBRARY:
+				WebUI.click(objects.selectArtifactFromLibrary)
+				handleArtifactFlow(Performance_AiAssist_Keywords.AiAssistConstants.LIBRARY_ARTIFACT_NAME)
+				downloadConversation()
+				startOverConversation()
+				break
+	
+	
+			default:
+				WebUI.comment("Invalid artifact selection: $userSelection")
+		}
+	}
+	@Keyword
+	def useDocumentAsArtifact() {
+		def useResponse = findTestObject('Object Repository/X360/XAI/Performance/AiAssist/03_General/div_UseAIResponseLast')
+		def addAsArtifact = findTestObject('Object Repository/X360/XAI/Performance/AiAssist/01_AskADocument/input_AddAsArtifact')
+		def proceedButton = findTestObject('Object Repository/X360/Misc/Performance/Generic/divButton_generic', [('sClass') : 'ai-art-button-container', ('sSelector'): 'button save'])
+		def btnProceed    = findTestObject('X360/XAI/Performance/AiAssist/03_General/btn_UseResponseProceed')
+		def modal = findTestObject('Object Repository/X360/XAI/Performance/AiAssist/01_AskADocument/span_Modal')
+		boolean perfEnabled = true
+		WebUI.waitForElementPresent(useResponse, GlobalVariable.iLoad)
+		WebUI.click(useResponse)
+		WebUI.switchToDefaultContent()
+		WebUI.waitForElementPresent(modal, GlobalVariable.iLoad)
+		perfStart('Use Document As Artifact',  perfEnabled)
+		WebUI.waitForElementPresent(addAsArtifact, GlobalVariable.iLoad)
+		WebUI.click(addAsArtifact)
+		WebUI.waitForElementPresent(proceedButton, GlobalVariable.iLoad)
+		WebUI.click(proceedButton)
+		WebUI.waitForElementClickable(btnProceed, GlobalVariable.iLoad)
+		WebUI.click(btnProceed)
+		perfEnd(perfEnabled)
+	}
+	
+	def handleUploadFromComputer() {
+		Map objects = defineUploadObjects()
+		def aiResponse = findTestObject("X360/XAI/Performance/AiAssist/03_General/div_AiResponseText")
+		boolean perfEnabled = true
+		validateTestObjects(objects)
+		validateUploadFile()
+		println "Upload initiated: ${GlobalVariable.CellValue}"
+		WebUI.waitForElementVisible(objects.uploadFileFromComputerButton, GlobalVariable.iLoad)
+		WebUI.click(objects.uploadFileFromComputerButton)
+	
+		CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(
+				GlobalVariable.sTimeToWait, 1, GlobalVariable.withServerLoad
+				)
+				
+	
+		WebUI.switchToDefaultContent()
+		WebUI.waitForElementClickable(objects.uploadFileButton, GlobalVariable.iLoad)
+	
+		
+		// Start Excel timer BEFORE upload
+		WebUI.uploadFile(objects.uploadFileButton, getUploadFilePath())
+		WebUI.waitForElementClickable(objects.uploadArtifactButton, GlobalVariable.iLoad)
+		WebUI.click(objects.uploadArtifactButton)
+		perfStart(Performance_AiAssist_Keywords.AiAssistConstants.UPLOAD_FROM_COMPUTER + " -",  perfEnabled)
+		CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(
+				GlobalVariable.sTimeToWait, 1, GlobalVariable.withServerLoad
+				)
+	
+		// Interact with AI
+		interactWithAI(
+				objects.iframe,
+				objects.useThisResponse,
+				objects.inputBox,
+				objects.btnSend,
+				objects.errorResponse,
+				aiResponse,
+				Performance_AiAssist_Keywords.AiAssistConstants.FILE_PROMPT
+				)
+	
+		// End Excel timer AFTER AI interaction
+		perfEnd(perfEnabled)
+	}
+	
+		/*
+		 * ============================== Artifact Selection Flow
+		 * ==============================
+		 */
+
+def handleArtifactFlow(String artifactName) {
+
+    int TIMEOUT = Math.max(GlobalVariable.iLoad, 10)
+    boolean perfEnabled = true
+
+    // Set CellValue based on artifact type
+    if (artifactName.equalsIgnoreCase(
+        Performance_AiAssist_Keywords.AiAssistConstants.ATTACHED_ARTIFACT_NAME)) {
+
+        perfStart(
+            Performance_AiAssist_Keywords.AiAssistConstants.USE_ATTACHED_ARTIFACT,
+            perfEnabled
+        )
+
+    } else if (artifactName.equalsIgnoreCase(
+        Performance_AiAssist_Keywords.AiAssistConstants.LIBRARY_ARTIFACT_NAME)) {
+
+        perfStart(
+            Performance_AiAssist_Keywords.AiAssistConstants.SELECT_FROM_LIBRARY,
+            perfEnabled
+        )
+    }
+
+    println "Artifact name received: [${artifactName}]"
+    println "Expected library artifact name: [${Performance_AiAssist_Keywords.AiAssistConstants.LIBRARY_ARTIFACT_NAME}]"
+    println "TIMEOUT = ${TIMEOUT}"
+
+    TestObject checkbox = findTestObject(
+        "Object Repository/X360/XAI/Performance/AiAssist/03_General/checkbox_PageRelatedArtifact",
+        [('sValue'): artifactName]
+    )
+
+    TestObject insertBtn = findTestObject(
+        "Object Repository/X360/Misc/Performance/Generic/button_generic",
+        [('sValue'): 'button insertImage']
+    )
+
+    WebUI.switchToDefaultContent()
+
+    try {
+
+        boolean checkboxPresent = false
+
+        // Retry because the artifact row may still be rendering
+        for (int attempt = 1; attempt <= 3; attempt++) {
+
+            println "Attempt ${attempt} to locate artifact checkbox..."
+
+            checkboxPresent = WebUI.waitForElementPresent(
+                checkbox,
+                10,
+                FailureHandling.OPTIONAL
+            )
+
+            if (checkboxPresent) {
+                println "Checkbox found on attempt ${attempt}"
+                break
+            }
+
+            println "Checkbox not found on attempt ${attempt}. Waiting before retry..."
+            WebUI.delay(2)
+        }
+
+        println "Checkbox present = ${checkboxPresent}"
+
+        if (!checkboxPresent) {
+
+            WebUI.takeScreenshot()
+
+            boolean exists = WebUI.verifyElementPresent(
+                checkbox,
+                5,
+                FailureHandling.OPTIONAL
+            )
+
+            boolean visible = WebUI.verifyElementVisible(
+                checkbox,
+                FailureHandling.OPTIONAL
+            )
+
+            println "Checkbox exists after retries: ${exists}"
+            println "Checkbox visible after retries: ${visible}"
+
+            KeywordUtil.markFailedAndStop(
+                "Artifact checkbox not found after retries. Artifact Name: ${artifactName}"
+            )
+        }
+
+        WebUI.waitForElementVisible(
+            checkbox,
+            10,
+            FailureHandling.STOP_ON_FAILURE
+        )
+
+        WebUI.waitForElementClickable(
+            checkbox,
+            10,
+            FailureHandling.STOP_ON_FAILURE
+        )
+
+        println "Clicking artifact checkbox..."
+        WebUI.click(checkbox)
+
+        WebUI.waitForElementVisible(
+            insertBtn,
+            10,
+            FailureHandling.STOP_ON_FAILURE
+        )
+
+        WebUI.waitForElementClickable(
+            insertBtn,
+            10,
+            FailureHandling.STOP_ON_FAILURE
+        )
+
+        println "Clicking Insert button..."
+        WebUI.click(insertBtn)
+
+    } catch (Exception e) {
+
+        println "================ ERROR DETAILS ================"
+        println "Artifact Name: ${artifactName}"
+        println "Exception Type: ${e.getClass().getName()}"
+        println "Exception Message: ${e.getMessage()}"
+        println "==============================================="
+
+        WebUI.takeScreenshot()
+
+        boolean exists = WebUI.verifyElementPresent(
+            checkbox,
+            5,
+            FailureHandling.OPTIONAL
+        )
+
+        boolean visible = WebUI.verifyElementVisible(
+            checkbox,
+            FailureHandling.OPTIONAL
+        )
+
+        println "Checkbox exists after failure: ${exists}"
+        println "Checkbox visible after failure: ${visible}"
+
+        KeywordUtil.markFailedAndStop(
+            "Failed during artifact selection for '${artifactName}'. Reason: ${e.getMessage()}"
+        )
+    }
+
+    interactWithAI(
+        findTestObject("X360/XAI/Performance/AiAssist/03_General/iframe_Xai"),
+        findTestObject("X360/XAI/Performance/AiAssist/03_General/div_UseThisResponse"),
+        findTestObject("X360/XAI/Performance/AiAssist/03_General/textarea_AiQuestionbox"),
+        findTestObject("X360/XAI/Performance/AiAssist/03_General/img_ButtonSend"),
+        findTestObject("X360/XAI/Performance/AiAssist/03_General/div_AiResponseError"),
+        findTestObject("X360/XAI/Performance/AiAssist/03_General/div_AiResponseText"),
+        Performance_AiAssist_Keywords.AiAssistConstants.FILE_PROMPT
+    )
+
+    perfEnd(perfEnabled)
+}
+
+
+	
+		/*
+		 * ============================== Shared AI Interaction Logic
+		 * ==============================
+		 */
+	def interactWithAI(
+			TestObject iframe,
+			TestObject useThisResponse,
+			TestObject inputBox,
+			TestObject btnSend,
+			TestObject errorResponse,
+			TestObject aiResponse,
+			String prompt) {
+	
+		def busy = findTestObject('X360/XAI/Performance/AiAssist/03_General/div_topSectionWithChatBusy')
+	
+		WebUI.waitForElementPresent(iframe, GlobalVariable.iLoad)
+		WebUI.switchToFrame(iframe, GlobalVariable.iLoad)
+		WebUI.waitForElementPresent(useThisResponse, GlobalVariable.iLoad)
+		WebUI.waitForElementPresent(inputBox, GlobalVariable.iLoad)
+	
+		WebUI.setText(inputBox, prompt)
+		WebUI.waitForElementNotPresent(busy, 300)
+		WebUI.waitForElementClickable(btnSend, GlobalVariable.iLoad)
+		WebUI.click(btnSend)
+		WebUI.waitForPageLoad(GlobalVariable.iLoad)
+	
+		verifyAIResponse(errorResponse, aiResponse)
+		WebUI.waitForElementNotPresent(busy, 300)
+		// Append AI response to CellValue
+		WebUI.waitForElementVisible(aiResponse, GlobalVariable.iLoad)
+		String responseText = WebUI.getText(aiResponse).trim()
+	
+		if (responseText) {
+			GlobalVariable.CellValue += "Ask your question: " + prompt + " | AI Response: " + responseText
+		} else {
+			GlobalVariable.CellValue += " | AI Response: [No response captured]"
+		}
+	}
+	
+		/*
+		 * ============================== Helpers ==============================
+		 */
+	Map defineUploadObjects() {
+		return [
+			uploadFileFromComputerButton:
+			findTestObject("Object Repository/X360/XAI/Performance/AiAssist/03_General/btnUploadFromComputer",
+			[('sValue'): Performance_AiAssist_Keywords.AiAssistConstants.UPLOAD_FROM_COMPUTER]),
+			useArtifact:
+			findTestObject("Object Repository/X360/XAI/Performance/AiAssist/03_General/btnUploadFromComputer",
+			[('sValue'): Performance_AiAssist_Keywords.AiAssistConstants.USE_ATTACHED_ARTIFACT]),
+			selectArtifactFromLibrary:
+			findTestObject("Object Repository/X360/XAI/Performance/AiAssist/03_General/btnUploadFromComputer",
+			[('sValue'): Performance_AiAssist_Keywords.AiAssistConstants.SELECT_FROM_LIBRARY]),
+			uploadFileButton:
+			findTestObject("Object Repository/X360/XAI/Performance/AiAssist/01_AskADocument/input_DialogFileToUpload"),
+			uploadArtifactButton:
+			findTestObject("Object Repository/X360/Misc/Performance/Generic/button_generic",
+			[('sValue'): 'button aiChatFileUploadAction']),
+			errorResponse:
+			findTestObject("Object Repository/X360/XAI/Performance/AiAssist/03_General/div_AiResponseError"),
+			aiResponse:
+			findTestObject("Object Repository/X360/XAI/Performance/AiAssist/03_General/div_AiResponseText"),
+			iframe:
+			findTestObject("X360/XAI/Performance/AiAssist/03_General/iframe_Xai"),
+			useThisResponse:
+			findTestObject("X360/XAI/Performance/AiAssist/03_General/div_UseThisResponse"),
+			inputBox:
+			findTestObject("X360/XAI/Performance/AiAssist/03_General/textarea_AiQuestionbox"),
+			btnSend:
+			findTestObject("X360/XAI/Performance/AiAssist/03_General/img_ButtonSend"),
+			btnStartOver:
+			findTestObject("Object Repository/X360/XAI/Performance/AiAssist/03_General/div_StartOver")
+		]
+	}
+	
+	@Keyword
+	def askPrompts(def aiPrompt1, def aiPrompt2, boolean perfEnabled) {
+		int timeout = 15
+		
+			Map ui = [
+				iframe        : findTestObject('X360/XAI/Performance/AiAssist/03_General/iframe_Xai'),
+				btnAssist     : findTestObject('X360/XAI/Performance/AiAssist/03_General/btn_AiAssist'),
+				busy          : findTestObject('X360/XAI/Performance/AiAssist/03_General/div_topSectionWithChatBusy'),
+				inputBox      : findTestObject('X360/XAI/Performance/AiAssist/03_General/textarea_AiQuestionbox'),
+				btnSend       : findTestObject('X360/XAI/Performance/AiAssist/03_General/img_ButtonSend'),
+				useResponse   : findTestObject('Object Repository/X360/XAI/Performance/AiAssist/03_General/div_UseAIResponseLast'),
+				btnProceed    : findTestObject('X360/XAI/Performance/AiAssist/03_General/btn_UseResponseProceed'),
+				errorResponse : findTestObject('X360/XAI/Performance/AiAssist/03_General/div_AiResponseError'),
+				aiResponse    : findTestObject('X360/XAI/Performance/AiAssist/03_General/div_AiResponseText'),
+				response      : findTestObject('X360/XAI/Performance/AiAssist/03_General/div_response'),
+				acceptResponse : findTestObject('Object Repository/X360/Misc/Performance/Generic/img_generic', [('sValue') : 'Accept response']),
+				feedback: findTestObject('Object Repository/X360/Misc/Performance/Generic/feedback_generic'),
+				feedbackOK: findTestObject('Object Repository/X360/XAI/Performance/AiAssist/03_General/btn_feedbackOkay')
+			]
+		
+			try {
+				WebUI.switchToDefaultContent()
+		
+		
+				/* Load AI Assist iframe if not yet visible */
+				if (!WebUI.waitForElementPresent(ui.iframe, timeout)) {
+					GlobalVariable.CellValue = 'Click Ai Assist - Show Card Details'
+					CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+					WebUI.waitForElementClickable(ui.btnAssist, timeout)
+					WebUI.click(ui.btnAssist)
+					CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+				}
+		
+		
+				/* Switch to AI frame and wait until ready */
+				WebUI.switchToFrame(ui.iframe, timeout)
+				WebUI.waitForElementNotPresent(ui.busy, 300)
+				WebUI.waitForElementPresent(ui.inputBox, timeout)
+		
+		
+				/* Send AI prompt */
+				WebUI.setText(ui.inputBox, aiPrompt1.getPromptDetails())
+				WebUI.waitForElementClickable(ui.btnSend, timeout)
+		
+		
+				GlobalVariable.CellValue = "Ask a Question - ${aiPrompt1.getPromptDetails()}  Response Received: " + WebUI.getText(ui.response)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+				WebUI.click(ui.btnSend)
+				WebUI.waitForElementNotPresent(ui.busy, 300)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+		
+				/* Validate AI response */
+				verifyAIResponse(ui.errorResponse, ui.aiResponse)
+		
+				/* Send AI prompt */
+				WebUI.setText(ui.inputBox, aiPrompt2.getPromptDetails())
+				WebUI.waitForElementClickable(ui.btnSend, timeout)
+		
+				GlobalVariable.CellValue = "Ask a Question - ${aiPrompt2.getPromptDetails()}  Response Received: " + WebUI.getText(ui.aiResponse)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+				WebUI.click(ui.btnSend)
+				WebUI.waitForElementNotPresent(ui.busy, 300)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+		
+				/* Validate AI response */
+				verifyAIResponse(ui.errorResponse, ui.aiResponse)
+		
+				downloadConversation()
+		
+				/*Give Feedback*/
+				GlobalVariable.CellValue = "Give Feedback"
+				WebUI.waitForElementClickable(ui.acceptResponse, timeout)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+				WebUI.click(ui.acceptResponse)
+				CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 2, GlobalVariable.withServerLoad)
+				WebUI.waitForElementPresent(ui.feedback, timeout)
+				WebUI.setText(ui.feedback, 'Great response!')
+				WebUI.waitForElementClickable(ui.feedbackOK, timeout)
+				WebUI.click(ui.feedbackOK)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+		
+				/* Accept AI response */
+				GlobalVariable.CellValue = "Click Use This Response - AI Response Used: " + WebUI.getText(ui.aiResponse)
+				WebUI.comment("AI returned response, click Use this response")
+				WebUI.waitForElementClickable(ui.useResponse, timeout)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+				WebUI.click(ui.useResponse)
+				WebUI.switchToDefaultContent()
+				WebUI.waitForElementClickable(ui.btnProceed, timeout)
+				WebUI.click(ui.btnProceed)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+				WebUI.waitForElementNotPresent(ui.iframe, timeout)
+		
+		
+			} catch (Exception e) {
+				WebUI.switchToDefaultContent()
+				KeywordUtil.markFailed("Unexpected error during AI interaction: ${e.message}")
+				e.printStackTrace()
+			}
+	}
+
+	
+	void validateTestObjects(Map objects) {
+		objects.each { key, value ->
+			if (value == null) {
+				KeywordUtil.markFailedAndStop("Missing test object: $key")
+			}
+		}
+	}
+	
+	void validateUploadFile() {
+		if (!new File(getUploadFilePath()).exists()) {
+			KeywordUtil.markFailedAndStop("Upload file not found.")
+		}
+	}
+	
+	def getUploadFilePath() {
+		return Paths.get(
+				RunConfiguration.getProjectDir(),
+				"Storage",
+				"X360",
+				"Performance",
+				"AiAssist",
+				"Document",
+				Performance_AiAssist_Keywords.AiAssistConstants.FILE_NAME
+				).toString()
+	}
+	
+	def startOverConversation() {
+		def startOverButton = findTestObject("X360/XAI/Performance/AiAssist/03_General/div_StartOver")
+		def busy=findTestObject('X360/XAI/Performance/AiAssist/03_General/div_topSectionWithChatBusy')
+		WebUI.waitForElementClickable(startOverButton, GlobalVariable.iLoad)
+		GlobalVariable.CellValue = "Start Over Button Clicked"
+		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+		WebUI.click(startOverButton)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+		WebUI.waitForElementNotPresent(busy, GlobalVariable.sTimeToWait)
+	
+	}
+	
+	def downloadConversation() {
+		def downloadConv = findTestObject('Object Repository/X360/Misc/Performance/Generic/img_generic', [('sValue') : 'Download Conversation'])
+		def textBox = findTestObject('X360/XAI/Performance/AiAssist/03_General/textarea_AiQuestionbox')
+		GlobalVariable.CellValue = "Download Conversation"
+		WebUI.waitForElementClickable(downloadConv, GlobalVariable.iLoad)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+		WebUI.click(downloadConv)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+		WebUI.waitForElementPresent(textBox, GlobalVariable.iLoad)
+		WebUI.click(textBox)
+	
+	}
+	
+	@Keyword
+	def xactaAIMenuSiteLevel() {
+		def menu = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'menu xactaAIMenu'])
+		def aiAssistant = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'dropdown-item aiAssistant'])
+		WebUI.waitForElementClickable(menu, GlobalVariable.iLoad)
+		WebUI.click(menu)
+		WebUI.waitForElementClickable(aiAssistant, GlobalVariable.iLoad)
+		WebUI.click(aiAssistant)
+	}
+	
+	@Keyword
+	def xactaAIMenuControlsAccuracy() {
+		def menu = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'menu xactaAIMenu'])
+		def aiAssistant = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'dropdown-item navControlConfidence'])
+		GlobalVariable.CellValue = ' Navigate to Controls Accuracy'
+		WebUI.waitForElementClickable(menu, GlobalVariable.iLoad)
+		WebUI.click(menu)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+		WebUI.waitForElementClickable(aiAssistant, GlobalVariable.iLoad)
+		WebUI.click(aiAssistant)
+		CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 2, GlobalVariable.withServerLoad)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+	}
+	
+	@Keyword
+	def xactaJobQueue() {
+		def menu = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'menu adminMenu'])
+		def publishingAndJobs = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'submenu pubJobsSubmenu'])
+		def jobSchedule = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'dropdown-item jobSchedLink'])
+		GlobalVariable.CellValue = ' Navvigate to Job Schedule Queue '
+		WebUI.waitForElementClickable(menu, GlobalVariable.iLoad)
+		WebUI.click(menu)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+		WebUI.waitForElementClickable(publishingAndJobs, GlobalVariable.iLoad)
+		WebUI.mouseOver(publishingAndJobs)
+		WebUI.waitForElementClickable(jobSchedule, GlobalVariable.iLoad)
+		WebUI.click(jobSchedule)
+		CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 2, GlobalVariable.withServerLoad)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+	}
+	
+	
+	
+	@Keyword
+	def aiAssistSiteLevelOption(String choice) {
+		GlobalVariable.CellValue = ' AI Prompt Panel Open: ' + choice
+		def aiAssistSelectionBtn = findTestObject("Object Repository/X360/XAI/Performance/AiSiteLevel/button_AiSiteLevelDropdown")
+		def selectedChoice = findTestObject("Object Repository/X360/XAI/Performance/AiSiteLevel/li_selectedChoice", [('sValue') : choice])
+		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+		WebUI.waitForElementClickable(aiAssistSelectionBtn, GlobalVariable.iLoad)
+		WebUI.click(aiAssistSelectionBtn)
+		WebUI.waitForElementClickable(selectedChoice, GlobalVariable.iLoad)
+		WebUI.delay(3)
+		WebUI.click(selectedChoice)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+		WebUI.delay(5)
+		CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+	}
+	
+	
+	@Keyword
+	def askPromptsSiteLevel(def aiPrompt1, def aiPrompt2, boolean perfEnabled) {
+		int timeout = 15
+		
+			Map ui = [
+				iframe        : findTestObject('X360/XAI/Performance/AiAssist/03_General/iframe_Xai'),
+				btnAssist     : findTestObject('X360/XAI/Performance/AiAssist/03_General/btn_AiAssist'),
+				busy          : findTestObject('X360/XAI/Performance/AiAssist/03_General/div_topSectionWithChatBusy'),
+				inputBox      : findTestObject('X360/XAI/Performance/AiAssist/03_General/textarea_AiQuestionbox'),
+				btnSend       : findTestObject('X360/XAI/Performance/AiAssist/03_General/img_ButtonSend'),
+				useResponse   : findTestObject('Object Repository/X360/XAI/Performance/AiAssist/03_General/div_UseAIResponseLast'),
+				btnProceed    : findTestObject('X360/XAI/Performance/AiAssist/03_General/btn_UseResponseProceed'),
+				errorResponse : findTestObject('X360/XAI/Performance/AiAssist/03_General/div_AiResponseError'),
+				aiResponse    : findTestObject('X360/XAI/Performance/AiAssist/03_General/div_AiResponseText'),
+				response      : findTestObject('X360/XAI/Performance/AiAssist/03_General/div_response'),
+				acceptResponse : findTestObject('Object Repository/X360/Misc/Performance/Generic/accept_Response', [('sValue') : 'Accept response']),
+				feedback: findTestObject('Object Repository/X360/Misc/Performance/Generic/feedback_generic'),
+				feedbackOK: findTestObject('Object Repository/X360/XAI/Performance/AiAssist/03_General/btn_feedbackOkay')
+			]
+			
+			WebUI.switchToDefaultContent()
+		
+			try {
+				CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 2, GlobalVariable.withServerLoad)
+				/* Switch to AI frame and wait until ready */
+				WebUI.switchToFrame(ui.iframe, timeout)
+				CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 2, GlobalVariable.withServerLoad)
+				WebUI.waitForElementNotPresent(ui.busy, 300)
+				WebUI.waitForElementPresent(ui.inputBox, timeout)
+		
+		
+				/* Send AI prompt */
+				WebUI.setText(ui.inputBox, aiPrompt1.getPromptDetails())
+				WebUI.waitForElementClickable(ui.btnSend, timeout)
+				GlobalVariable.CellValue = "Ask a Question - ${aiPrompt1.getPromptDetails()} Response Received: " + WebUI.getText(ui.response)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+				WebUI.click(ui.btnSend)
+				WebUI.waitForElementNotPresent(ui.busy, 300)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+		
+				/* Validate AI response */
+				verifyAIResponse(ui.errorResponse, ui.aiResponse)
+		
+				/* Send AI prompt */
+				WebUI.setText(ui.inputBox, aiPrompt2.getPromptDetails())
+				WebUI.waitForElementClickable(ui.btnSend, timeout)
+		
+				GlobalVariable.CellValue = "Ask a Question - ${aiPrompt2.getPromptDetails()} Response Received: " + WebUI.getText(ui.aiResponse)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+				WebUI.click(ui.btnSend)
+				WebUI.waitForElementNotPresent(ui.busy, 300)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+		
+				/* Validate AI response */
+				verifyAIResponse(ui.errorResponse, ui.aiResponse)
+		
+				downloadConversation()
+		
+				/*Give Feedback*/
+				GlobalVariable.CellValue = "Give Feedback"
+				WebUI.scrollToElement(ui.acceptResponse, 5)
+				WebUI.mouseOver(ui.acceptResponse)
+				WebUI.waitForElementVisible(ui.acceptResponse, timeout)
+				WebUI.waitForElementClickable(ui.acceptResponse, timeout)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+				WebUI.click(ui.acceptResponse)
+				WebUI.waitForElementPresent(ui.feedback, timeout)
+				WebUI.setText(ui.feedback, 'Great response!')
+				WebUI.waitForElementClickable(ui.feedbackOK, timeout)
+				WebUI.click(ui.feedbackOK)
+				CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+		
+		
+			} catch (Exception e) {
+				WebUI.switchToDefaultContent()
+				KeywordUtil.markFailed("Unexpected error during AI interaction: ${e.message}")
+				e.printStackTrace()
+			}
+	}
+	
+	@Keyword
+	def followUpQuestionSiteLevel(def followupQuestion) {
+		Map ui = [
+			iframe        : findTestObject('X360/XAI/Performance/AiAssist/03_General/iframe_Xai'),
+			btnAssist     : findTestObject('X360/XAI/Performance/AiAssist/03_General/btn_AiAssist'),
+			busy          : findTestObject('X360/XAI/Performance/AiAssist/03_General/div_topSectionWithChatBusy'),
+			inputBox      : findTestObject('X360/XAI/Performance/AiAssist/03_General/textarea_AiQuestionbox'),
+			btnSend       : findTestObject('X360/XAI/Performance/AiAssist/03_General/img_ButtonSend'),
+			useResponse   : findTestObject('Object Repository/X360/XAI/Performance/AiAssist/03_General/div_UseAIResponseLast'),
+			btnProceed    : findTestObject('X360/XAI/Performance/AiAssist/03_General/btn_UseResponseProceed'),
+			errorResponse : findTestObject('X360/XAI/Performance/AiAssist/03_General/div_AiResponseError'),
+			aiResponse    : findTestObject('X360/XAI/Performance/AiAssist/03_General/div_AiResponseText'),
+			acceptResponse : findTestObject('Object Repository/X360/Misc/Performance/Generic/img_generic', [('sValue') : 'Accept response']),
+			feedback: findTestObject('Object Repository/X360/Misc/Performance/Generic/feedback_generic'),
+			feedbackOK: findTestObject('Object Repository/X360/XAI/Performance/AiAssist/03_General/btn_feedbackOkay')
+		]
+		try {
+		WebUI.setText(ui.inputBox, followupQuestion.getPromptDetails())
+		WebUI.waitForElementClickable(ui.btnSend, GlobalVariable.iLoad)
+		GlobalVariable.CellValue = "Ask Follow Up Question - ${followupQuestion.name()} Response Received: " + WebUI.getText(ui.aiResponse)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+		WebUI.click(ui.btnSend)
+		WebUI.waitForElementNotPresent(ui.busy, 300)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+		/* Validate AI response */
+		verifyAIResponse(ui.errorResponse, ui.aiResponse)
+		/*Give Feedback*/
+		GlobalVariable.CellValue = "Give Feedback"
+		WebUI.waitForElementClickable(ui.acceptResponse, GlobalVariable.iLoad)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+		WebUI.click(ui.acceptResponse)
+		WebUI.waitForElementPresent(ui.feedback, GlobalVariable.iLoad)
+		WebUI.setText(ui.feedback, 'Great response!')
+		WebUI.waitForElementClickable(ui.feedbackOK, GlobalVariable.iLoad)
+		WebUI.click(ui.feedbackOK)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+		}
+
+		catch (Exception e) {
+		WebUI.switchToDefaultContent()
+		KeywordUtil.markFailed("Unexpected error during AI interaction: ${e.message}")
+		e.printStackTrace()
+	}
+		
+	}
+	
+	@Keyword
+	def projectAssistant(String choice) {
+		def projectAssistant = findTestObject("Object Repository/X360/Misc/Performance/Generic/dialogLink_generic", [('sValue') : 'dropdown-item navProjAIAssistantWhite'])
+		def iframe = findTestObject('X360/XAI/Performance/AiAssist/03_General/iframe_Xai')
+		GlobalVariable.CellValue = ' Click and Open Project Assistant: ' + choice
+		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+		WebUI.waitForElementClickable(projectAssistant, GlobalVariable.iLoad)
+		WebUI.click(projectAssistant)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+	}
+
+}
