@@ -1,0 +1,910 @@
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+
+import static com.kms.katalon.core.checkpoint.CheckpointFactory.findCheckpoint
+import static com.kms.katalon.core.testcase.TestCaseFactory.findTestCase
+import static com.kms.katalon.core.testdata.TestDataFactory.findTestData
+import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import static com.kms.katalon.core.testobject.ObjectRepository.findWindowsObject
+import com.kms.katalon.core.checkpoint.Checkpoint as Checkpoint
+import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberKW
+import com.kms.katalon.core.mobile.keyword.MobileBuiltInKeywords as Mobile
+import com.kms.katalon.core.model.FailureHandling as FailureHandling
+import com.kms.katalon.core.testcase.TestCase as TestCase
+import com.kms.katalon.core.testdata.TestData as TestData
+import com.kms.katalon.core.testng.keyword.TestNGBuiltinKeywords as TestNGKW
+import com.kms.katalon.core.testobject.TestObject as TestObject
+import com.kms.katalon.core.webservice.keyword.WSBuiltInKeywords as WS
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import com.kms.katalon.core.windows.keyword.WindowsBuiltinKeywords as Windows
+import internal.GlobalVariable
+import oshi.util.GlobalConfig
+
+import org.openqa.selenium.Keys as Keys
+import com.kms.katalon.core.util.KeywordUtil
+import org.openqa.selenium.StaleElementReferenceException
+import java.nio.file.Paths
+import com.kms.katalon.core.configuration.RunConfiguration
+import org.openqa.selenium.WebElement
+import org.openqa.selenium.JavascriptExecutor
+import org.openqa.selenium.By
+import com.kms.katalon.core.configuration.RunConfiguration
+import com.kms.katalon.core.webui.common.WebUiCommonHelper
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import org.openqa.selenium.WebElement
+import java.util.Arrays
+
+/*
+ * Performs comprehensive performance testing of the Controls Implementation
+ * module by executing edit, bulk edit, assignment, workflow, sharing,
+ * export/import, sorting, search, and artifact management operations across
+ * Card, List Detail, and List View layouts while recording timing metrics.
+ */
+
+WebUI.callTestCase(
+	findTestCase('X360/Authentication/Functional/C38_LoginAsMadmin'),
+	[
+		('sUsername') : GlobalVariable.username,
+		('sPassword') : GlobalVariable.password,
+		('imgTestCase') : '\\LoginAsMadmin.png'
+	],
+	FailureHandling.STOP_ON_FAILURE
+ )
+ CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+ CustomKeywords.'x360.Performance_ExcelFunctions.createExcel'('ControlsImplementation_CardDetail_Optimized')
+ CustomKeywords.'x360.Performance_Functional_Keywords.GotoOraProjAllTasks'(GlobalVariable.isMadmin)
+ CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+ GlobalVariable.CellValue = "Access Controls Implementation"
+ WebUI.waitForElementPresent(findTestObject('X360/Misc/Performance/Common/04_Project/TaskList/aTaskListItem_task',[('task'): 'Controls Implementation']), GlobalVariable.iLoad)
+ WebUI.click(findTestObject('X360/Misc/Performance/Common/04_Project/TaskList/aTaskListItem_task',[('task'): 'Controls Implementation']), FailureHandling.STOP_ON_FAILURE)
+ CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+ CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+ CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+ CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+ CustomKeywords.'x360.Performance_Functional_Keywords.resetArtifactAndPstepStatus'()
+ CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+ //pin collapsible panel
+ CustomKeywords.'x360.Performance_Functional_Keywords.pinCollapsiblePanel'()
+ 
+ // declare test object variables  PLEASE DO NOT DELETE OR COMMENT OUT
+ def controlInput = findTestObject('X360/Misc/Performance/Common/04_Project/RemediationPlan/input_DetailsRemplanName')
+ def cardItem = findTestObject('X360/Misc/Performance/Common/04_Project/RemediationPlan/divCardItem_posindex', [('posindex'): 1])
+ def toPaginationInput = findTestObject('Object Repository/X360/Misc/Performance/Common/07_General/inputNavSetPageLength_ListDetail')
+ def selectAllCard = findTestObject('Object Repository/X360/Misc/Performance/Common/01_CollapsibleSidePanel/input_sideFilterSelectAll_Controls')
+ def searchInput = findTestObject('X360/Misc/Performance/Common/01_CollapsibleSidePanel/input_collapsibleSearchFilter')
+ def searchTrigger = findTestObject('X360/Process_Steps/End2End_Web/ProcessSteps/00_General/input_SearchTextField')
+ def checkbox = findTestObject(
+	 'Object Repository/X360/Process_Steps/Performance/Controls_Implementation/select_ControlOwner',
+	 ['sText': 'ISM-0548', 'sIndex': '1']
+ )
+ def checkboxLD = findTestObject(
+	 'Object Repository/X360/Process_Steps/Performance/Controls_Implementation/select_ControlOwner',
+	 ['sText': 'ISM-1649']
+ )
+ // Get the root directory of your Katalon project
+ def projDir = RunConfiguration.getProjectDir()
+ def UploadFile = Paths.get(projDir, "Storage", "X360", "Performance", "Import", "Controls_Implementation.xlsx").toString()
+ def clearFilter = findTestObject("Object Repository/X360/Misc/Performance/Generic/button_generic", [('sValue') : 'button clearSideFilter'])
+ // --- Utility helpers ---
+ def waitAndClick(TestObject to, int timeout = GlobalVariable.iLoad) {
+	 WebUI.waitForElementClickable(to, timeout)
+	 WebUI.waitForElementPresent(to, timeout)
+	 WebUI.click(to)
+	 CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+ }
+ 
+ def waitAndSelect(TestObject to, String label, boolean isRegex = false, int timeout = GlobalVariable.iLoad) {
+	 WebUI.waitForElementPresent(to, timeout)
+	 WebUI.selectOptionByLabel(to, label, isRegex)
+ }
+ 
+ def safeClick(TestObject to, int timeout = GlobalVariable.iLoad) {
+	 try {
+		 WebUI.waitForElementPresent(to, timeout)
+		 WebUI.click(to)
+		 CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+		 
+	 } catch (Exception e) {
+		 WebUI.click(to)
+	 }
+ }
+
+def changeWorkflowStatus(String statusText, TestObject buttonObj, TestObject confirmObj, String notes) {
+	WebUI.comment("Change Workflow Status: ${statusText}")
+	WebUI.waitForElementPresent(buttonObj, GlobalVariable.iLoad)
+	WebUI.waitForElementClickable(buttonObj, GlobalVariable.iLoad)
+	WebUI.click(buttonObj)
+	WebUI.waitForElementPresent(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/h4WorkflowSubmitNotes'), GlobalVariable.iLoad)
+	WebUI.setText(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/h4WorkflowSubmitNotes'), notes)
+
+	GlobalVariable.CellValue = "Change Workflow Status: ${statusText}"
+	CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+	WebUI.waitForElementPresent(confirmObj, GlobalVariable.iLoad)
+	WebUI.waitForElementClickable(confirmObj, GlobalVariable.iLoad)
+	WebUI.click(confirmObj)
+
+	CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+	CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+}
+
+'Controls Implementation Click Three Cards Successively'
+WebUI.comment('Click Three Cards Successively')
+clickCICards()
+
+WebUI.comment('Edit a Controls Implementation')
+
+editCI(search, controlOrigination, status, priority, completionDate, provideAs, privateImplementation, additionalComments)
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+//pin collapsible panel
+CustomKeywords.'x360.Performance_Functional_Keywords.pinCollapsiblePanel'()
+WebUI.waitForElementPresent(searchInput, GlobalVariable.iLoad)
+WebUI.scrollToElement(searchInput, 10)
+WebUI.setText(searchInput, '')
+WebUI.sendKeys(searchInput, Keys.chord(Keys.ENTER))
+
+WebUI.waitForPageLoad(GlobalVariable.iLoad)
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+
+performBulkEditCI(bulkPrivateImplementation)
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+WebUI.waitForPageLoad(GlobalVariable.iLoad)
+WebUI.waitForElementPresent(selectAllCard, GlobalVariable.iLoad)
+WebUI.click(selectAllCard)
+WebUI.waitForElementPresent(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/button_MoreActions_MenuInlineDropdown'), GlobalVariable.iLoad)
+WebUI.click(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/button_MoreActions_MenuInlineDropdown'))
+WebUI.waitForElementPresent(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aAssignControlOwners'), GlobalVariable.iLoad)
+WebUI.click(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aAssignControlOwners'))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+WebUI.waitForElementPresent(checkbox, GlobalVariable.iLoad)
+WebUI.click(checkbox)
+WebUI.waitForElementPresent(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_UpdateControlOwners'), GlobalVariable.iLoad)
+WebUI.click(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_UpdateControlOwners'))
+WebUI.waitForPageLoad( GlobalVariable.iLoad)
+WebUI.waitForElementPresent(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aSelectOneControlOwner'), GlobalVariable.iLoad)
+WebUI.click(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aSelectOneControlOwner'))
+WebUI.waitForElementPresent(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Assign'), GlobalVariable.iLoad)
+GlobalVariable.CellValue = 'Click - Assign Control Owners'
+CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+WebUI.click(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Assign'))
+CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+// Create a parameterized TestObject
+def modalClose = findTestObject(
+  'Object Repository/X360/Misc/Performance/Generic/span_generic',
+  ['sClass': 'row title', 'sValue': 'icon-close xacta-icon-white icon-right-margin']
+)
+
+// Wait for element
+WebUI.waitForElementPresent(modalClose, GlobalVariable.iLoad)
+
+// Click element
+WebUI.click(modalClose)
+
+// Accepted
+changeWorkflowStatus(
+	"Accepted",
+	findTestObject('X360/Process_Steps/Performance/Controls_Implementation/button_Accept'),
+	findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_h4Accept'),
+	notes
+)
+
+// Rejected
+changeWorkflowStatus(
+	"Rejected",
+	findTestObject('X360/Process_Steps/Performance/Controls_Implementation/button_Reject'),
+	findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_h4Reject'),
+	notes
+)
+
+// Optional toaster wait only for Rejected
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+
+// --- Configure Sharing for All ---
+WebUI.comment('Configure Sharing for All')
+GlobalVariable.CellValue = 'Configure Sharing for All'
+waitAndClick(selectAllCard)
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/button_MoreActions_MenuInlineDropdown'))
+waitAndClick(findTestObject('Object Repository/X360/Process_Steps/Performance/Controls_Implementation/aConfigureSharingForAll'))
+waitAndSelect(findTestObject('Object Repository/X360/Misc/Performance/Generic/selectFilter_generic',
+	[('sClass'): 'modal-body', ('sSelector'): 'input-text sharingSelect']), provideAs)
+CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+waitAndClick(findTestObject('Object Repository/X360/Misc/Performance/Generic/divButton_generic',
+	[('sClass'):'modal-body', ('sSelector'):'button save']))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+
+// --- Export ---
+WebUI.comment('Export')
+WebUI.switchToDefaultContent()
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/button_MoreActions_MenuInlineDropdown'))
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aExport'))
+
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/ifrmExportRemediationPlanItems'))
+WebUI.switchToFrame(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/ifrmExportRemediationPlanItems'), GlobalVariable.iLoad)
+
+waitAndSelect(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/optDocumentMarking'), marking)
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/btnDocumentMarking'))
+
+GlobalVariable.CellValue = 'Click - Export'
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Export'))
+CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+safeClick(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/aCloseIframeWindow'))
+CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+WebUI.switchToDefaultContent()
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+
+// --- Import ---
+WebUI.comment('Import')
+waitAndClick(findTestObject('X360/Misc/Performance/Common/07_General/span_PstepTitle'))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/button_MoreActions_MenuInlineDropdown'))
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aImport'))
+
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/iFrmUploadImplementationPlan'))
+WebUI.switchToFrame(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/iFrmUploadImplementationPlan'), GlobalVariable.iLoad)
+
+WebUI.uploadFile(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_ChooseFile'), UploadFile)
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Import'))
+
+CustomKeywords.'x360.Performance_Functional_Keywords.waitForToasterAppearAndDisappear'(GlobalVariable.iLoad)
+
+GlobalVariable.CellValue = 'Click - Import'
+CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+WebUI.waitForElementClickable(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Import'), GlobalVariable.iLoad)
+WebUI.click(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Import'))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+
+safeClick(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/aCloseIframeWindow'))
+WebUI.switchToDefaultContent()
+
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+//pin collapsible panel
+CustomKeywords.'x360.Performance_Functional_Keywords.pinCollapsiblePanel'()
+
+//Sort Functional Testing
+def sortFields = [
+	"Control Rank",
+	"Control ID",
+	"Control Name",
+	"Provide As",
+	"Control Type",
+	"Approval to Inherit",
+	"Status",
+	"Workflow Status",
+	"Implementation Source",
+	"Last Updated"
+]
+
+for (String field : sortFields) {
+	WebUI.comment("Sort By - ${field}")
+	GlobalVariable.CellValue = "Sort By - ${field}"
+	SortBy(field)
+	WebUI.delay(GlobalVariable.iDelay)
+}
+
+WebUI.waitForPageLoad(GlobalVariable.iLoad)
+WebUI.comment('Insert Artifact')
+//insertArtifactFromLibrary()
+GlobalVariable.CellValue = 'Perform Search'
+
+// Trigger search
+if (WebUI.waitForElementClickable(searchTrigger, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+	WebUI.sendKeys(searchTrigger, Keys.chord(Keys.ENTER))
+	CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+}
+
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 1, GlobalVariable.withServerLoad)
+CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+WebUI.switchToDefaultContent()
+
+/**List Detail View**/
+WebUI.waitForElementClickable(clearFilter, GlobalVariable.iLoad)
+WebUI.click(clearFilter)
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+CustomKeywords.'x360.Performance_Functional_Keywords.switchToListDetailView'()
+//CustomKeywords.'x360.Performance_Functional_Keywords.resetArtifactAndPstepStatus'()
+WebUI.switchToDefaultContent()
+CustomKeywords.'x360.Performance_ExcelFunctions.createExcel'('ControlsImplementation_ListDetail_Optimized')
+
+// --- Script starts ---
+WebUI.comment('Click Three Cards Successively')
+clickCICards()
+
+WebUI.comment('Edit a Controls Implementation')
+editCI(search, controlOrigination, status, priority, completionDate, provideAs, privateImplementation, additionalComments)
+
+// Refresh search
+WebUI.waitForElementPresent(searchInput, GlobalVariable.iLoad)
+WebUI.setText(searchInput, '')
+WebUI.sendKeys(searchInput, Keys.chord(Keys.ENTER))
+
+// Ensure page ready
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+
+// Bulk edit
+performBulkEditCI(bulkPrivateImplementation)
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+
+// Select all cards
+waitAndClick(selectAllCard)
+
+// More actions → Assign Control Owners
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/button_MoreActions_MenuInlineDropdown'))
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aAssignControlOwners'))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+
+// Update Control Owners
+waitAndClick(checkboxLD)
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_UpdateControlOwners'))
+
+// Assign one owner
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aSelectOneControlOwner'))
+GlobalVariable.CellValue = 'Click - Assign Control Owners'
+CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Assign'))
+CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 2, GlobalVariable.withServerLoad)
+
+// Close modal
+waitAndClick(modalClose)
+
+
+// Accepted
+changeWorkflowStatus(
+	"Accepted",
+	findTestObject('X360/Process_Steps/Performance/Controls_Implementation/button_Accept'),
+	findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_h4Accept'),
+	notes
+)
+
+// Rejected
+changeWorkflowStatus(
+	"Rejected",
+	findTestObject('X360/Process_Steps/Performance/Controls_Implementation/button_Reject'),
+	findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_h4Reject'),
+	notes
+)
+
+// Optional toaster wait only for Rejected
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+
+// --- Configure Sharing for All ---
+WebUI.comment('Configure Sharing for All')
+GlobalVariable.CellValue = 'Configure Sharing for All'
+waitAndClick(selectAllCard)
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/button_MoreActions_MenuInlineDropdown'))
+waitAndClick(findTestObject('Object Repository/X360/Process_Steps/Performance/Controls_Implementation/aConfigureSharingForAll'))
+waitAndSelect(findTestObject('Object Repository/X360/Misc/Performance/Generic/selectFilter_generic',
+	[('sClass'): 'modal-body', ('sSelector'): 'input-text sharingSelect']), provideAs)
+CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+waitAndClick(findTestObject('Object Repository/X360/Misc/Performance/Generic/divButton_generic',
+	[('sClass'):'modal-body', ('sSelector'):'button save']))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+
+// --- Export ---
+WebUI.comment('Export')
+WebUI.switchToDefaultContent()
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/button_MoreActions_MenuInlineDropdown'))
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aExport'))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/ifrmExportRemediationPlanItems'))
+WebUI.switchToFrame(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/ifrmExportRemediationPlanItems'), GlobalVariable.iLoad)
+
+waitAndSelect(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/optDocumentMarking'), marking)
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/btnDocumentMarking'))
+
+GlobalVariable.CellValue = 'Click - Export'
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Export'))
+CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+safeClick(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/aCloseIframeWindow'))
+CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+WebUI.switchToDefaultContent()
+
+// --- Import ---
+WebUI.comment('Import')
+waitAndClick(findTestObject('X360/Misc/Performance/Common/07_General/span_PstepTitle'))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/button_MoreActions_MenuInlineDropdown'))
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/aImport'))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/iFrmUploadImplementationPlan'))
+WebUI.switchToFrame(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/iFrmUploadImplementationPlan'), GlobalVariable.iLoad)
+
+WebUI.uploadFile(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_ChooseFile'), UploadFile)
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Import'))
+
+CustomKeywords.'x360.Performance_Functional_Keywords.waitForToasterAppearAndDisappear'(GlobalVariable.iLoad)
+
+GlobalVariable.CellValue = 'Click - Import'
+CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+WebUI.waitForElementClickable(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Import'), GlobalVariable.iLoad)
+WebUI.click(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Import'))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+
+safeClick(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/aCloseIframeWindow'))
+WebUI.switchToDefaultContent()
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+//pin collapsible panel
+CustomKeywords.'x360.Performance_Functional_Keywords.pinCollapsiblePanel'()
+
+for (String field : sortFields) {
+	WebUI.comment("Sort By - ${field}")
+	GlobalVariable.CellValue = "Sort By - ${field}"
+	SortBy(field)
+	WebUI.delay(GlobalVariable.iDelay)
+}
+
+WebUI.waitForPageLoad(GlobalVariable.iLoad)
+WebUI.comment('Insert Artifact')
+//insertArtifactFromLibrary()
+
+// Trigger search
+if (WebUI.waitForElementClickable(searchTrigger, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+	WebUI.sendKeys(searchTrigger, Keys.chord(Keys.ENTER))
+	CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+}
+GlobalVariable.CellValue = 'Perform Search'
+
+// Trigger search
+if (WebUI.waitForElementClickable(searchTrigger, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+	WebUI.sendKeys(searchTrigger, Keys.chord(Keys.ENTER))
+	CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+}
+
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 1, GlobalVariable.withServerLoad)
+CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+WebUI.switchToDefaultContent()
+
+/**List View**/
+WebUI.waitForElementClickable(clearFilter, GlobalVariable.iLoad)
+WebUI.click(clearFilter)
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+//pin collapsible panel
+CustomKeywords.'x360.Performance_Functional_Keywords.pinCollapsiblePanel'()
+CustomKeywords.'x360.Performance_Functional_Keywords.switchToListView'()
+//CustomKeywords.'x360.Performance_Functional_Keywords.resetArtifactAndPstepStatus'()
+WebUI.switchToDefaultContent()
+CustomKeywords.'x360.Performance_ExcelFunctions.createExcel'('ControlsImplementation_ListView_Optimized')
+//clickCICardsListView()
+// --- Export ---
+WebUI.comment('Export')
+WebUI.switchToDefaultContent()
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+
+waitAndClick(findTestObject('Object Repository/X360/Process_Steps/Performance/Controls_Implementation/button_MoreActions_MenuInlineDropdown'))
+WebUI.waitForElementVisible(findTestObject('Object Repository/X360/Process_Steps/Performance/TestPlanAndResults/a_exportListView'), 10)
+WebElement itemExport = WebUI.findWebElement(findTestObject('Object Repository/X360/Process_Steps/Performance/TestPlanAndResults/a_exportListView'), 10)
+WebUI.executeJavaScript(
+	"arguments[0].parentElement.parentElement.scrollTop = arguments[0].offsetTop;",
+	Arrays.asList(itemExport)
+)
+WebUI.executeJavaScript("arguments[0].click();", Arrays.asList(itemExport))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+
+
+//waitAndClick(findTestObject('Object Repository/X360/Process_Steps/Performance/TestPlanAndResults/a_exportListView'))
+
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/ifrmExportRemediationPlanItems'))
+WebUI.switchToFrame(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/ifrmExportRemediationPlanItems'), GlobalVariable.iLoad)
+
+waitAndSelect(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/optDocumentMarking'), marking)
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/btnDocumentMarking'))
+
+GlobalVariable.CellValue = 'Click - Export'
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Export'))
+CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+safeClick(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/aCloseIframeWindow'))
+CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+WebUI.switchToDefaultContent()
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+
+// --- Import ---
+WebUI.comment('Import')
+waitAndClick(findTestObject('X360/Misc/Performance/Common/07_General/span_PstepTitle'))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+WebUI.switchToDefaultContent()
+waitAndClick(findTestObject('Object Repository/X360/Process_Steps/Performance/Controls_Implementation/button_MoreActions_MenuInlineDropdown'))
+WebElement itemImport = WebUI.findWebElement(findTestObject('Object Repository/X360/Process_Steps/Performance/Controls_Implementation/a_importListView'), 10)
+WebUI.executeJavaScript(
+	"arguments[0].parentElement.parentElement.scrollTop = arguments[0].offsetTop;",
+	Arrays.asList(itemImport)
+)
+WebUI.executeJavaScript("arguments[0].click();", Arrays.asList(itemImport))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/iFrmUploadImplementationPlan'))
+WebUI.switchToFrame(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/iFrmUploadImplementationPlan'), GlobalVariable.iLoad)
+
+WebUI.uploadFile(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_ChooseFile'), UploadFile)
+waitAndClick(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Import'))
+
+CustomKeywords.'x360.Performance_Functional_Keywords.waitForToasterAppearAndDisappear'(GlobalVariable.iLoad)
+
+GlobalVariable.CellValue = 'Click - Import'
+CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+WebUI.waitForElementClickable(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Import'), GlobalVariable.iLoad)
+WebUI.click(findTestObject('X360/Process_Steps/Performance/Controls_Implementation/btn_Import'))
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+
+safeClick(findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/aCloseIframeWindow'))
+WebUI.switchToDefaultContent()
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+//pin collapsible panel
+CustomKeywords.'x360.Performance_Functional_Keywords.pinCollapsiblePanel'()
+
+for (String field : sortFields) {
+	WebUI.comment("Sort By - ${field}")
+	GlobalVariable.CellValue = "Sort By - ${field}"
+	SortBy(field)
+	WebUI.delay(GlobalVariable.iDelay)
+}
+
+WebUI.waitForPageLoad(GlobalVariable.iLoad)
+
+WebUI.comment('Search')
+// Wait for and enter search text
+if (WebUI.waitForElementVisible(searchInput, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+	WebUI.setText(searchInput, search)
+}
+
+GlobalVariable.CellValue = 'Perform Search'
+
+// Trigger search
+if (WebUI.waitForElementClickable(searchTrigger, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+	WebUI.sendKeys(searchTrigger, Keys.chord(Keys.ENTER))
+	CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+}
+
+CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 1, GlobalVariable.withServerLoad)
+CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+
+insertArtifactFromLibrary()
+
+WebUI.closeBrowser()
+  
+ void clickCICards(int numberOfCards = 3) {
+	  WebUI.waitForPageLoad(GlobalVariable.iLoad)
+	  KeywordUtil.logInfo("Clicking Controls Implementation ${numberOfCards} Cards")
+
+	  TestObject cardHeader = findTestObject('Object Repository/X360/Misc/Performance/Common/04_Project/RemediationPlan/divControlCard_EditHeader')
+	  TestObject cardTitle = findTestObject('X360/Misc/Performance/Common/07_General/span_PstepTitle')
+
+	  for (int i = 1; i <= numberOfCards; i++) {
+		  KeywordUtil.logInfo("Clicking Card# ${i}")
+		  GlobalVariable.CellValue = "Click - Card ${i}"
+
+		  // Ensure page is ready and reset context
+		  if (!WebUI.waitForElementVisible(cardHeader, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+			  WebUI.comment("Card header not visible — skipping Card# ${i}")
+			  continue
+		  }
+	 WebUI.switchToDefaultContent()
+
+	 // Locate card and attempt click
+	 TestObject cardItem = findTestObject('X360/Misc/Performance/Common/04_Project/RemediationPlan/divCardItem_posindex', [('posindex'): i])
+	 if (WebUI.waitForElementClickable(cardItem, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+		 try {
+			 WebUI.click(cardItem)
+			 CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+		 } catch (Exception ex) {
+			 WebUI.comment("Retrying click on Card# ${i} due to: ${ex.message}")
+			 WebUI.waitForElementClickable(cardItem, 3)
+			 WebUI.click(cardItem)
+		 }
+	 } else {
+		 WebUI.comment("Card# ${i} not clickable — skipping.")
+		 continue
+	 }
+	 // Wait for loading and confirm content
+	 CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+	 CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+
+	 if (WebUI.waitForElementVisible(cardTitle, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+		 WebUI.mouseOver(cardTitle)
+	 } else {
+		 WebUI.comment("Card content not visible after clicking Card# ${i}")
+	 }
+ }
+}
+
+void editCI(String search, String controlOrganization, String status, String priority, String completionDate, String provideAs, String privateImplementation, String additionalComments) {
+	// Wait for the page to fully load
+	WebUI.waitForPageLoad(GlobalVariable.iLoad)
+
+	// Locate and populate the search input with the remediation item keyword
+	TestObject searchInput = findTestObject('X360/Misc/Performance/Common/01_CollapsibleSidePanel/input_collapsibleSearchFilter')
+	WebUI.waitForElementPresent(searchInput, GlobalVariable.iLoad)
+	WebUI.setText(searchInput, search)
+	WebUI.sendKeys(searchInput, Keys.chord(Keys.ENTER))
+
+	// Wait for the specific ci to appear based on its aria-label attribute
+	String sAttribValue1 = "ISM-1617 The CISO regularly reviews and updates "
+	CustomKeywords.'x360.Performance_Functional_Keywords.waitForElementAttributeValue'(
+		findTestObject('X360/Process_Steps/End2End_Web/Remediation Plan/aRiskElementTitle'), "aria-label", sAttribValue1, 15)
+
+	// Wait for the verification link to be present
+	String vlink = "ISM-1617 The CISO regularly reviews and updates"
+	CustomKeywords.'x360.Performance_Functional_Keywords.WaitForElementPresent'(
+		findTestObject('X360/Process_Steps/End2End_Web/Remediation Plan/verifyLink', [('sVerifyText'): vlink]), 15)
+
+	// Click the first card item if it's clickable
+	TestObject cardItem = findTestObject('X360/Misc/Performance/Common/04_Project/RemediationPlan/divCardItem_posindex', [('posindex'): 1])
+	if (WebUI.waitForElementClickable(cardItem, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+		WebUI.switchToDefaultContent()
+		WebUI.click(cardItem)
+	}
+
+	// Ensure the remediation plan input field is present; if not, reload the section
+	TestObject controlImplPriv = findTestObject('Object Repository/X360/Misc/Performance/Generic/textEditor_generic', [('sID') : 'controlPrivateImplementation'])
+	if (!WebUI.waitForElementPresent(controlImplPriv, 40, FailureHandling.OPTIONAL)) {
+		// Navigate to the task list and reopen the remediation planning tab
+		TestObject taskLink = findTestObject('X360/Misc/Performance/Common/04_Project/TaskList/aTaskListItem_task', [('task'): 'Residual Risk Metrics'])
+		WebUI.waitForElementClickable(taskLink, 5)
+		WebUI.click(taskLink)
+		CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+		WebUI.waitForElementPresent(findTestObject('X360/Misc/Performance/Common/04_Project/TaskList/aTaskListItem_task',[('task'): 'Controls Implementation']), GlobalVariable.iLoad)
+		WebUI.click(findTestObject('X360/Misc/Performance/Common/04_Project/TaskList/aTaskListItem_task',[('task'): 'Controls Implementation']), FailureHandling.STOP_ON_FAILURE)
+		// Re-pin the collapsible panel and wait for the input to appear
+		CustomKeywords.'x360.Performance_Functional_Keywords.pinCollapsiblePanel'()
+		WebUI.waitForElementPresent(controlImplPriv, GlobalVariable.iLoad, FailureHandling.OPTIONAL)
+	}
+
+	// If the user has Madmin privileges, fill out the remediation form
+	if (GlobalVariable.isMadmin) {
+		def textEditor = findTestObject('X360/Process_Steps/Performance/Controls_Implementation/textBox_InnerEditor')
+		def textEditorFrame = findTestObject('Object Repository/X360/Process_Steps/Performance/Controls_Implementation/iframe_generic', [('sValue') : 'Rich Text Editor Field Private Implementation'])
+		WebUI.switchToDefaultContent()
+		WebUI.waitForElementVisible(controlImplPriv,
+                            GlobalVariable.iLoad)
+		WebUI.waitForElementClickable(controlImplPriv,
+                              GlobalVariable.iLoad)
+		WebUI.click(controlImplPriv)
+		WebUI.delay(1)
+		CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+		WebUI.waitForElementPresent(textEditorFrame, GlobalVariable.iLoad)
+		WebUI.switchToFrame(textEditorFrame, GlobalVariable.iLoad)
+		WebUI.click(textEditor)
+		WebUI.sendKeys(textEditor, Keys.chord(Keys.CONTROL, 'a'))
+		WebUI.sendKeys(textEditor, Keys.chord(Keys.DELETE))
+		// Define dropdowns for severity, priority, audit status, and POC
+		def controlOrganizationField = findTestObject('X360/Misc/Performance/Generic/select_generic', [('sValue') : 'input-text controlOriginationType'])
+		def statusField = findTestObject('X360/Misc/Performance/Generic/select_generic', [('sValue') : 'input-text requirementImplementationStatus'])
+		def priorityField = findTestObject('X360/Misc/Performance/Generic/select_generic', [('sValue') : 'input-text priorityLevel'])
+		def provideAsField = findTestObject('X360/Misc/Performance/Generic/select_generic', [('sValue') : 'input-text sharingSelect'])
+		def completionDateField = findTestObject('X360/Misc/Performance/Generic/input_generic', [('sValue') : 'input-text requirementEstimatedCompletion'])
+		def additionalCommentField = findTestObject('Object Repository/X360/Misc/Performance/Generic/textarea_generic', [('sValue') : 'input-text requirementViewNotes'])
+
+		WebUI.setText(textEditor, privateImplementation)
+		
+		WebUI.switchToDefaultContent()
+		// Select values from each dropdown
+		WebUI.scrollToElement(controlOrganizationField, GlobalVariable.iLoad)
+		WebUI.waitForElementClickable(controlOrganizationField, GlobalVariable.iLoad)
+		WebUI.selectOptionByLabel(controlOrganizationField, controlOrganization, false)
+
+		WebUI.waitForElementPresent(statusField, GlobalVariable.iLoad)
+		WebUI.selectOptionByLabel(statusField, status, false)
+
+		WebUI.waitForElementPresent(priorityField, GlobalVariable.iLoad)
+		WebUI.selectOptionByLabel(priorityField, priority, false)
+		
+		WebUI.waitForElementClickable(provideAsField, GlobalVariable.iLoad)
+		WebUI.scrollToElement(provideAsField, GlobalVariable.iLoad)
+		WebUI.waitForElementPresent(provideAsField, GlobalVariable.iLoad)
+		WebUI.selectOptionByLabel(provideAsField, provideAs, false)
+		
+		WebUI.waitForElementPresent(completionDateField, GlobalVariable.iLoad)
+		WebUI.setText(completionDateField, completionDate)
+		
+		WebUI.waitForElementPresent(additionalCommentField, GlobalVariable.iLoad)
+		WebUI.setText(additionalCommentField, additionalComments)
+	}
+	// Save the controls implementation plan and log the time taken
+	def saveBtn = findTestObject(
+			"Object Repository/X360/Misc/Performance/Generic/divButton_generic",
+			[('sClass') : 'xcard-edit-title-buttons', ('sSelector') : 'button save'])
+	WebElement save = WebUiCommonHelper.findWebElement(saveBtn, 10)
+	WebUI.waitForElementPresent(findTestObject('X360/Misc/Performance/Common/07_General/span_PstepTitle'), GlobalVariable.iLoad)
+	GlobalVariable.CellValue = 'Edit a Controls Implementation Plan'
+	WebUI.waitForElementPresent(saveBtn,GlobalVariable.iLoad)
+	//WebUI.click(saveBtn)
+	WebUI.executeJavaScript("arguments[0].scrollIntoView({block: 'center'});", Arrays.asList(save))
+	WebUI.executeJavaScript("arguments[0].click();", Arrays.asList(save))
+	CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+	CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+	CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+}
+
+void performBulkEditCI(String bulkPrivateImplementation) {
+	WebUI.waitForPageLoad(GlobalVariable.iLoad)
+	WebUI.comment('Bulk Edit Controls Implementation')
+	def bulkEditBtn = findTestObject('X360/Process_Steps/Performance/Risk_Registry/ICRisk/btnbulkEditAction')
+	def bulkEditHeader = findTestObject('Object Repository/X360/Misc/Performance/Generic/title_generic', [('sValue'): 'Bulk Edit Controls'])
+	def controlImplPriv = findTestObject(
+    'Object Repository/X360/Misc/Performance/Generic/bulkTextWithEditor_generic',
+    [
+        ('sClass1') : 'field',
+        ('sText') : 'Private Implementation',
+        ('sClass2') : 'editor_textdiv',
+        ('sIndex') : '3'
+    ]
+)
+	def textEditor = findTestObject('X360/Process_Steps/Performance/Controls_Implementation/textBox_InnerEditor')
+	def textEditorFrame = findTestObject('X360/Process_Steps/Performance/Controls_Implementation/iFrame_textBox_PrivateImplementation_BulkEdit')
+	def controlOrganizationField = findTestObject('X360/Misc/Performance/Generic/select_generic', [('sValue') : 'input-text controlOriginationType'])
+	def saveBtn = findTestObject('Object Repository/X360/Process_Steps/Performance/Remediaton_Plan/H4btnSave')
+	def confirmDialog = findTestObject('Object Repository/X360/Process_Steps/Performance/Remediaton_Plan/h4ConfirmBulkChanges')
+	def confirmBtn = findTestObject('Object Repository/X360/Process_Steps/Performance/Remediaton_Plan/btnOkay')
+	def selectAllInput = findTestObject('Object Repository/X360/Misc/Performance/Common/01_CollapsibleSidePanel/input_sideFilterSelectAll_Controls')
+	def provideAs = findTestObject('Object Repository/X360/Misc/Performance/Generic/selectFilter_generic', [('sClass'): 'modal-body', ('sSelector'): 'input-text sharingSelect'])
+
+	// Select all items
+	WebUI.waitForElementPresent(selectAllInput, GlobalVariable.iLoad)
+	WebUI.waitForElementClickable(selectAllInput, GlobalVariable.iLoad)
+	WebUI.click(selectAllInput)
+
+	// Open bulk edit panel
+	WebUI.waitForElementPresent(bulkEditBtn, GlobalVariable.iLoad)
+	WebUI.click(bulkEditBtn, FailureHandling.STOP_ON_FAILURE)
+	WebUI.waitForElementVisible(bulkEditHeader, GlobalVariable.iLoad)
+	CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+	WebUI.waitForPageLoad(GlobalVariable.iLoad)
+	// Clear private impl field
+	//WebUI.click(controlImplPriv)
+	WebUI.waitForElementPresent(controlImplPriv, GlobalVariable.iLoad)
+	WebUI.click(controlImplPriv)
+	WebUI.switchToFrame(textEditorFrame,GlobalVariable.iLoad)	
+		WebUI.click(textEditor)
+		WebUI.sendKeys(textEditor, Keys.chord(Keys.CONTROL, 'a'))
+		WebUI.sendKeys(textEditor, Keys.chord(Keys.DELETE))
+		WebUI.setText(textEditor, bulkPrivateImplementation)
+		WebUI.switchToDefaultContent()
+	WebUI.waitForPageLoad(GlobalVariable.iLoad)
+	WebUI.waitForElementClickable(provideAs, GlobalVariable.iLoad)
+	WebUI.selectOptionByLabel(provideAs, 'Inherited', false)
+	// Save and confirm
+	WebUI.waitForElementVisible(saveBtn, GlobalVariable.iLoad)
+	WebUI.waitForElementClickable(saveBtn, GlobalVariable.iLoad)
+	WebUI.waitForElementPresent(saveBtn, GlobalVariable.iLoad)
+	WebUI.click(saveBtn)
+	CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+	GlobalVariable.CellValue = 'Bulk Edit Action'
+	WebUI.waitForPageLoad(GlobalVariable.iLoad)
+	WebUI.takeScreenshot()
+	WebUI.waitForElementVisible(confirmDialog, GlobalVariable.iLoad)
+	WebUI.waitForElementClickable(confirmBtn, GlobalVariable.iLoad)
+	WebUI.scrollToElement(confirmBtn, GlobalVariable.iLoad)
+	WebUI.click(confirmBtn)
+	CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+	CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 5, GlobalVariable.withServerLoad)
+	CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+}
+
+void SortBy(String sortField = "Last Updated") {
+	WebUI.waitForPageLoad(GlobalVariable.iLoad)
+	// Ensure Remplan panel is ready
+	TestObject pstepTitle = findTestObject('X360/Misc/Performance/Common/07_General/span_PstepTitle')
+	TestObject sortDropdown = findTestObject('X360/Process_Steps/End2End_Web/ProcessSteps/04_ControlsImplementation/select_FullSidePanelCardSortBy')
+	WebUI.waitForElementVisible(pstepTitle, GlobalVariable.iLoad)
+	CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 3, GlobalVariable.withServerLoad)
+	GlobalVariable.CellValue = "Sort By - $sortField"
+	WebUI.selectOptionByLabel(sortDropdown, sortField, false)
+	CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+	CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 1, GlobalVariable.withServerLoad)
+	CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+	WebUI.waitForElementVisible(pstepTitle, GlobalVariable.iLoad)
+	WebUI.mouseOver(pstepTitle)
+	CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 1, GlobalVariable.withServerLoad)
+}
+
+void insertArtifactFromLibrary() {
+	WebUI.waitForPageLoad(GlobalVariable.iLoad)
+	// Define reusable TestObjects
+	TestObject btnViewArtifactList = findTestObject('X360/Process_Steps/End2End_Web/ProcessSteps/00_General/buttonViewArtifactList')
+	TestObject iframeArtifactList = findTestObject('X360/Process_Steps/End2End_Web/ProcessSteps/00_General/ifrmArtifactList')
+	TestObject btnArtifactBrowse = findTestObject('X360/Process_Steps/End2End_Web/ProcessSteps/00_General/buttonArtifactBrowse')
+	TestObject iframeBrowseLibrary = findTestObject('X360/Process_Steps/End2End_Web/ProcessSteps/00_General/ifrmBrowseArtifactLibrary')
+	TestObject inputArtifact = findTestObject('X360/Process_Steps/End2End_Web/ProcessSteps/00_General/inputAfpc2Detail')
+	TestObject btnInsert = findTestObject('X360/Process_Steps/Performance/Remediaton_Plan/btnInsert')
+	TestObject btnClose = findTestObject('X360/Process_Steps/Performance/Risk_Registry/ICRisk/btnClose')
+
+	// Step 1: Open Artifact List
+	if (WebUI.waitForElementClickable(btnViewArtifactList, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+		WebUI.comment('Opening Artifact List...')
+		WebUI.click(btnViewArtifactList)
+		CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+		WebUI.switchToFrame(iframeArtifactList, GlobalVariable.iLoad)
+	}
+
+	// Step 2: Browse Artifact Library
+	if (WebUI.waitForElementClickable(btnArtifactBrowse, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+		WebUI.comment('Browsing Artifact Library...')
+		WebUI.click(btnArtifactBrowse)
+		CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+		WebUI.switchToDefaultContent()
+		WebUI.switchToFrame(iframeBrowseLibrary, GlobalVariable.iLoad)
+	}
+
+	// Step 3: Select Artifact
+	if (WebUI.waitForElementClickable(inputArtifact, GlobalVariable.iLoad, FailureHandling.OPTIONAL)) {
+		WebUI.comment('Selecting Artifact...')
+		WebUI.click(inputArtifact)
+	}
+
+	// Step 4: Insert Artifact
+	WebUI.comment('Inserting Artifact...')
+	WebUI.waitForPageLoad(GlobalVariable.iLoad)
+	GlobalVariable.CellValue = 'Click - Insert Artifact'
+	WebUI.click(btnInsert)
+	CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+	CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, GlobalVariable.iLoad, GlobalVariable.withServerLoad)
+	CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+
+	// Step 5: Close Artifact Panel
+	WebUI.switchToDefaultContent()
+	WebUI.switchToFrame(iframeArtifactList, GlobalVariable.iLoad)
+
+	try {
+		WebUI.comment('Closing Artifact Panel...')
+		WebUI.click(btnClose)
+	} catch (org.openqa.selenium.StaleElementReferenceException sere) {
+		WebUI.comment("Retrying close button due to stale element")
+		WebUI.click(btnClose)
+	}
+}
+
+void clickCICardsListView(int numberOfCards = 2) {
+	WebUI.waitForPageLoad(GlobalVariable.iLoad)
+	 WebUI.comment('Clicking initial card to initialize view')
+	TestObject firstCard = findTestObject('X360/Misc/Performance/Common/04_Project/ControlsImplementation/ListView/divListItem_posindex', [('posindex'): 1])
+	WebUI.click(firstCard)
+
+	WebUI.comment("Clicking ${numberOfCards} Control Implementation Cards Successively")
+	KeywordUtil.logInfo("Clicking CI ${numberOfCards} Cards")
+
+	TestObject cardHeader = findTestObject('X360/Misc/Performance/Common/04_Project/RemediationPlan/divControlCard_EditHeader')
+	TestObject cardTitle = findTestObject('X360/Misc/Performance/Common/07_General/span_PstepTitle')
+
+	for (int i = 1; i <= numberOfCards; i++) {
+		KeywordUtil.logInfo("Clicking Card# ${i}")
+		GlobalVariable.CellValue = "Click - Card ${i}"
+
+		WebUI.waitForElementPresent(cardHeader, GlobalVariable.iLoad)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getStartTime'()
+
+		WebUI.switchToDefaultContent()
+		TestObject cardItem = findTestObject('X360/Misc/Performance/Common/04_Project/RemediationPlan/divCardItem_posindex', [('posindex'): i])
+
+		try {
+			WebUI.click(cardItem)
+		} catch (Exception e) {
+			WebUI.comment("Retrying click on Card# ${i} due to exception: ${e.class.simpleName}")
+			WebUI.click(cardItem)
+		}
+
+		CustomKeywords.'x360.Performance_Functional_Keywords.spinnerWaitToDisappear'(GlobalVariable.sTimeToWait, 1, GlobalVariable.withServerLoad)
+		CustomKeywords.'x360.Performance_ExcelFunctions.getEndTime'()
+
+		WebUI.mouseOver(cardTitle)
+	}
+}
